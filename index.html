@@ -13,8 +13,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- QRCode.js Library (Updated to robust CDN to prevent "QRCode is not defined") -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+    <!-- QRCode.js Library (Stable CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <!-- jsPDF Library for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
@@ -126,7 +126,7 @@
         </main>
     </div>
 
-    <!-- ================= LOGGED IN APP (NO SIDEBAR LAYOUT) ================= -->
+    <!-- ================= LOGGED IN APP ================= -->
     <div id="page-app" class="hidden flex-1 flex flex-col w-full relative">
         
         <!-- System Announcement Banner -->
@@ -291,10 +291,10 @@
                             <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
                         </div>
 
-                        <!-- Detailed Progress Bar for PDF -->
+                        <!-- Detailed Progress Bar for Cloudinary -->
                         <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl fade-in">
                             <div class="flex justify-between items-end text-sm text-gray-700 font-bold mb-2">
-                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ Server...</span>
+                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...</span>
                                 <span id="quick-progress-text" class="text-primary text-xl">0%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-2 shadow-inner">
@@ -661,8 +661,6 @@
         // --- Cloudinary Config ---
         const CLOUDINARY_CLOUD_NAME = 'dm6kuksrr'; 
         const CLOUDINARY_API_KEY = '613527247357135';
-        
-        // ฟังก์ชันถอดรหัส Secret Key ที่ถูกซ่อนไว้เป็น Base64
         const _getCSec = () => atob('c0gxMmpCQlBNTDJocDhhZkNfVFlGMnhfc0NF');
 
         const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
@@ -684,6 +682,13 @@
 
         const safeEl = (id) => document.getElementById(id);
         
+        const generateShortCode = (length = 4) => {
+            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let result = '';
+            for (let i = 0; i < length; i++) result += chars[Math.floor(Math.random() * chars.length)];
+            return result;
+        };
+
         // --- Initialization ---
         async function init() {
             // Check short link redirect
@@ -730,35 +735,61 @@
 
                         // ===== NEW: FILE DOWNLOAD PAGE LOGIC =====
                         if (data.type === 'file') {
-                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'เตรียมไฟล์ของคุณ...';
+                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'กำลังเตรียมหน้าดาวน์โหลด...';
                             
                             setTimeout(() => {
                                 safeEl('sys-loading')?.classList.add('hidden');
                                 safeEl('page-landing')?.classList.add('hidden');
                                 safeEl('page-app')?.classList.add('hidden');
                                 
-                                let downloadUrl = data.destination;
-                                // Add Cloudinary Force Download flag (fl_attachment) if possible
+                                const fileUrl = data.destination;
+                                let downloadUrl = fileUrl;
+                                
+                                // Cloudinary force download hack
                                 if (downloadUrl.includes('cloudinary.com') && downloadUrl.includes('/upload/')) {
                                     downloadUrl = downloadUrl.replace('/upload/', '/upload/fl_attachment/');
                                 }
                                 
+                                const fileName = data.name || 'ไฟล์ของคุณ';
+                                const ext = fileName.split('.').pop().toLowerCase();
+                                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+                                
+                                let previewHtml = '';
+                                if (isImage) {
+                                    previewHtml = `<div class="bg-gray-100 rounded-2xl p-2 mb-6 flex justify-center border border-gray-200 h-[40vh]"><img src="${fileUrl}" class="max-w-full max-h-full object-contain rounded-xl shadow-sm" alt="Preview"></div>`;
+                                } else {
+                                    let iconClass = 'fa-file-arrow-down';
+                                    if(ext === 'pdf') iconClass = 'fa-file-pdf text-red-500';
+                                    else if(['zip','rar'].includes(ext)) iconClass = 'fa-file-zipper text-amber-500';
+                                    else if(['doc','docx'].includes(ext)) iconClass = 'fa-file-word text-blue-600';
+                                    
+                                    previewHtml = `<div class="w-32 h-32 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-gray-100"><i class="fa-solid ${iconClass} text-6xl text-primary"></i></div>`;
+                                }
+                                
                                 const dlPage = document.createElement('div');
-                                dlPage.className = 'fixed inset-0 bg-slate-50 z-[200] flex flex-col items-center justify-center p-4';
+                                dlPage.className = 'fixed inset-0 bg-slate-100 z-[200] flex flex-col p-4 md:p-8 overflow-y-auto font-sans text-gray-800';
                                 dlPage.innerHTML = `
-                                    <div class="bg-white p-8 md:p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-gray-200 fade-in relative overflow-hidden">
-                                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary"></div>
-                                        <div class="w-24 h-24 bg-indigo-50 text-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                                            <i class="fa-solid fa-file-arrow-down text-5xl"></i>
+                                    <div class="max-w-2xl w-full mx-auto bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden fade-in mt-auto mb-auto">
+                                        <div class="h-2 w-full bg-gradient-to-r from-primary to-secondary"></div>
+                                        <div class="p-6 md:p-10 text-center">
+                                            <h2 class="text-3xl font-black text-gray-900 mb-2">หน้าดาวน์โหลดไฟล์</h2>
+                                            <p class="text-gray-500 mb-8 font-medium">แชร์โดย NexusQR System</p>
+                                            
+                                            ${previewHtml}
+                                            
+                                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-8 inline-block max-w-full w-full">
+                                                <p class="font-mono text-sm text-gray-700 truncate px-4"><i class="fa-solid fa-file mr-2 text-gray-400"></i> ${fileName}</p>
+                                            </div>
+                                            
+                                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                                <a href="${downloadUrl}" class="flex-1 bg-gradient-to-r from-primary to-secondary text-white py-4 px-8 rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                                                    <i class="fa-solid fa-download"></i> ดาวน์โหลดเลย
+                                                </a>
+                                                <a href="${fileUrl}" target="_blank" class="flex-1 bg-white border-2 border-gray-200 text-gray-700 py-4 px-8 rounded-2xl font-bold text-lg hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-3">
+                                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดดูไฟล์
+                                                </a>
+                                            </div>
                                         </div>
-                                        <h2 class="text-2xl font-extrabold text-gray-900 mb-3">ไฟล์พร้อมดาวน์โหลด</h2>
-                                        <p class="text-gray-500 mb-8 truncate px-4 bg-gray-50 py-2 rounded-lg font-mono text-sm border border-gray-100">${data.name || 'document_file'}</p>
-                                        
-                                        <a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" onclick="setTimeout(() => window.close(), 1000)" class="block w-full bg-gradient-to-r from-primary to-secondary text-white py-4 rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-1 transition-all">
-                                            <i class="fa-solid fa-download mr-2"></i> ดาวน์โหลดไฟล์
-                                        </a>
-                                        
-                                        <p class="text-xs text-gray-400 mt-6"><i class="fa-solid fa-shield-check text-green-500 mr-1"></i> สแกนความปลอดภัยและให้บริการโดย NexusQR</p>
                                     </div>
                                 `;
                                 document.body.appendChild(dlPage);
@@ -1121,7 +1152,6 @@
             let cloudinaryResourceType = null;
             let inputData = "";
 
-            // Validate Input
             if (quickType === 'url') {
                 inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
@@ -1404,7 +1434,7 @@
             showToast(`กำลังเตรียมไฟล์ ${format.toUpperCase()}...`, "info");
             
             // Check if QRCode library is loaded to prevent "QRCode is not defined" error
-            if (typeof window.QRCode === 'undefined') {
+            if (typeof QRCode === 'undefined') {
                 closeDownloadModal();
                 return showToast("ไม่สามารถโหลดเครื่องมือสร้าง QR ได้ โปรดตรวจสอบอินเทอร์เน็ต", "error");
             }
@@ -1426,7 +1456,7 @@
             
             try {
                 if(format === 'svg') {
-                    window.QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
+                    QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
                         if(err) { closeDownloadModal(); return showToast("สร้าง SVG ไม่สำเร็จ", "error"); }
                         const url = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
                         triggerDownload(url, `${filename}.svg`);
@@ -1434,7 +1464,7 @@
                         closeDownloadModal();
                     });
                 } else if (format === 'pdf') {
-                    window.QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                    QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
                         if(err) { closeDownloadModal(); return showToast("สร้างไฟล์ไม่สำเร็จ", "error"); }
                         try {
                             if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF Library ไม่พร้อมใช้งาน");
@@ -1453,7 +1483,7 @@
                     });
                 } else {
                     const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-                    window.QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                    QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
                         if(err) { closeDownloadModal(); return showToast("สร้างรูปภาพไม่สำเร็จ", "error"); }
                         triggerDownload(url, `${filename}.${format}`);
                         closeDownloadModal();
@@ -1526,7 +1556,7 @@
                 const spinner = safeEl('login-spinner');
                 if(spinner) spinner.classList.remove('hidden');
                 try { await signInWithPopup(auth, googleProvider); } 
-                catch (error) { showToast("เข้าสู่ระบบล้มเหลว", "error"); }
+                catch (error) { showToast("เข้าสู่ระบบล้มเหลว (โดเมนนี้อาจต้องตั้งค่าใน Firebase)", "error"); }
                 finally { if(spinner) spinner.classList.add('hidden'); }
             });
         }
