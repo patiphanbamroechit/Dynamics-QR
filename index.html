@@ -26,7 +26,6 @@
                         primary: '#8b5cf6', // Violet 500
                         secondary: '#a855f7', // Fuchsia 500
                         dark: '#0f172a', // Slate 900
-                        sidebar: '#1e1b4b', // Deep purple dark
                         lightbg: '#f8fafc' 
                     },
                     fontFamily: { sans: ['Prompt', 'sans-serif'] }
@@ -35,13 +34,14 @@
         }
     </script>
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; color: #334155; }
+        /* Base scrolling enabled on body */
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; color: #334155; overflow-y: auto; overflow-x: hidden; }
         .hidden { display: none !important; }
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -55,7 +55,7 @@
         .text-gradient { background: linear-gradient(to right, #8b5cf6, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col">
+<body class="antialiased min-h-screen flex flex-col bg-slate-50">
 
     <!-- System Loading & Redirect Screen -->
     <div id="sys-loading" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
@@ -94,8 +94,8 @@
     </div>
 
     <!-- ================= PUBLIC LANDING PAGE ================= -->
-    <div id="page-landing" class="hidden flex-1 flex flex-col bg-white">
-        <nav class="px-6 py-5 flex justify-between items-center max-w-6xl mx-auto w-full z-40 relative">
+    <div id="page-landing" class="hidden flex-1 flex flex-col bg-white w-full">
+        <nav class="px-6 py-5 flex justify-between items-center max-w-7xl mx-auto w-full z-40 relative">
             <div class="flex items-center gap-2 text-gray-900 font-extrabold text-2xl">
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center text-sm"><i class="fa-solid fa-qrcode"></i></div>
                 <span>Nexus<span class="text-primary">QR</span></span>
@@ -126,65 +126,33 @@
         </main>
     </div>
 
-    <!-- ================= LOGGED IN APP (NEXUS THEME) ================= -->
-    <div id="page-app" class="hidden flex-1 min-h-screen w-full">
+    <!-- ================= LOGGED IN APP (NO SIDEBAR LAYOUT) ================= -->
+    <div id="page-app" class="hidden flex-1 flex flex-col w-full relative">
         
-        <!-- Sidebar Overlay (Mobile) -->
-        <div id="sidebar-overlay" class="hidden fixed inset-0 bg-dark/50 z-40 backdrop-blur-sm transition-opacity"></div>
-
-        <!-- Modern Sidebar -->
-        <aside id="sidebar" class="w-64 bg-sidebar text-gray-300 flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 shadow-2xl md:shadow-none">
-            <div class="h-20 flex items-center px-6 border-b border-white/10 justify-between">
-                <div class="flex items-center gap-3 text-white font-extrabold text-2xl cursor-pointer" onclick="navTo('dashboard')">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-sm shadow-lg"><i class="fa-solid fa-qrcode"></i></div>
-                    <span>Nexus<span class="text-primary font-light">QR</span></span>
-                </div>
-                <button id="btn-close-sidebar" class="md:hidden text-gray-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-3">Workspace</p>
-                <button onclick="navTo('dashboard')" id="nav-dashboard" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-white bg-white/10 hover:bg-white/20">
-                    <i class="fa-solid fa-border-all w-5 text-center"></i> จัดการคิวอาร์
-                </button>
-                <button onclick="navTo('analytics')" id="nav-analytics" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-white/5">
-                    <i class="fa-solid fa-chart-line w-5 text-center"></i> ภาพรวมสถิติ
-                </button>
+        <!-- Top Header Navbar (Sticky for scrolling) -->
+        <header class="h-16 bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 w-full shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 md:px-8 h-full flex items-center justify-between">
                 
-                <div id="admin-menu-section" class="hidden pt-6">
-                    <p class="text-[10px] font-bold text-red-400 uppercase tracking-widest px-3 mb-3">Admin Panel</p>
-                    <button onclick="navTo('admin')" id="nav-admin" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-500/20 transition">
-                        <i class="fa-solid fa-shield-halved w-5 text-center"></i> ผู้ดูแลระบบ
-                    </button>
-                </div>
-            </nav>
+                <!-- Left: Logo & Desktop Navigation -->
+                <div class="flex items-center gap-8">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-2 text-gray-900 font-extrabold text-xl cursor-pointer" onclick="navTo('dashboard')">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center text-sm"><i class="fa-solid fa-qrcode"></i></div>
+                        <span>Nexus<span class="text-primary">QR</span></span>
+                    </div>
 
-            <!-- Bottom Live Indicator -->
-            <div class="p-4 bg-black/20 m-4 rounded-xl border border-white/5 flex items-center gap-3">
-                <span class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-                <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-white truncate">เชื่อมต่อระบบแล้ว</p>
-                    <p class="text-[10px] text-gray-400">Real-time Sync Active</p>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content Area (With Margin Left for Sidebar) -->
-        <div class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300 min-h-screen">
-            
-            <!-- Top Header Navbar (Sticky for scrolling) -->
-            <header class="h-20 bg-white/90 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
-                <!-- Mobile Toggle -->
-                <div class="md:hidden flex items-center gap-3">
-                    <button id="btn-mobile-menu" class="text-gray-600 hover:text-primary text-2xl transition"><i class="fa-solid fa-bars"></i></button>
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center"><i class="fa-solid fa-qrcode"></i></div>
-                </div>
-                
-                <div class="hidden md:block">
-                    <h2 id="header-title" class="text-xl font-bold text-gray-800">แผงควบคุม (Dashboard)</h2>
+                    <!-- Main Navigation Links -->
+                    <nav class="hidden md:flex items-center gap-2 h-16">
+                        <button onclick="navTo('dashboard')" id="nav-dashboard" class="top-nav-btn text-primary font-bold border-b-2 border-primary h-full px-3 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-border-all"></i> จัดการคิวอาร์
+                        </button>
+                        <button onclick="navTo('analytics')" id="nav-analytics" class="top-nav-btn text-gray-500 hover:text-gray-900 border-b-2 border-transparent h-full px-3 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-chart-line"></i> ภาพรวมสถิติ
+                        </button>
+                        <button onclick="navTo('admin')" id="nav-admin" class="top-nav-btn hidden text-red-400 hover:text-red-600 border-b-2 border-transparent h-full px-3 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-shield-halved"></i> ผู้ดูแลระบบ
+                        </button>
+                    </nav>
                 </div>
 
                 <!-- Right Profile Menu (Always Top Right) -->
@@ -195,32 +163,38 @@
                     
                     <!-- Advanced Profile Dropdown -->
                     <div class="relative group">
-                        <button class="flex items-center gap-3 p-1.5 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200 focus:outline-none">
-                            <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold"><i class="fa-regular fa-user"></i></div>
-                            <div class="hidden md:block text-left mr-2">
-                                <p id="user-email-text" class="text-sm font-bold text-gray-700 leading-none">user@email.com</p>
-                                <p class="text-[10px] text-gray-500 mt-0.5">Free Plan</p>
-                            </div>
-                            <i class="fa-solid fa-chevron-down text-xs text-gray-400 hidden md:block mr-2"></i>
+                        <button class="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition focus:outline-none">
+                            <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold shadow-sm"><i class="fa-regular fa-user"></i></div>
+                            <i class="fa-solid fa-chevron-down text-xs text-gray-400 mr-1"></i>
                         </button>
                         
-                        <!-- Dropdown Menu -->
+                        <!-- Dropdown Menu Box -->
                         <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 transform origin-top-right">
                             <div class="p-4 border-b border-gray-50 bg-gray-50/50 rounded-t-2xl">
                                 <p class="text-xs text-gray-500 font-medium mb-1">บัญชีของคุณ</p>
                                 <p class="text-sm font-bold text-gray-800 truncate" id="drop-email">email@domain.com</p>
                             </div>
+
+                            <!-- Mobile App Navigation (Shows only on small screens) -->
+                            <div class="md:hidden p-2 py-3 border-b border-gray-50 bg-indigo-50/30">
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-3 mb-2">เมนูหลัก</p>
+                                <button onclick="navTo('dashboard')" class="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:bg-indigo-50 rounded-lg flex items-center gap-2"><i class="fa-solid fa-border-all w-4 text-center"></i> จัดการคิวอาร์</button>
+                                <button onclick="navTo('analytics')" class="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:bg-indigo-50 rounded-lg flex items-center gap-2"><i class="fa-solid fa-chart-line w-4 text-center"></i> ภาพรวมสถิติ</button>
+                                <button onclick="navTo('admin')" id="nav-admin-mobile" class="hidden w-full text-left px-3 py-2 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg flex items-center gap-2"><i class="fa-solid fa-shield-halved w-4 text-center"></i> ผู้ดูแลระบบ</button>
+                            </div>
+
+                            <!-- Profile Management Options -->
                             <div class="p-2 py-3 text-sm text-gray-600 font-medium space-y-1">
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-user-pen w-4 text-center"></i> จัดการโปรไฟล์</a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-credit-card w-4 text-center"></i> แผนและแพ็กเกจ (Billing)</a>
-                                <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition">
-                                    <div class="flex items-center gap-3"><i class="fa-solid fa-globe w-4 text-center"></i> โดเมนของฉัน</div>
-                                    <span class="bg-primary/10 text-primary text-[9px] px-2 py-0.5 rounded font-bold">PRO</span>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-3 mb-2">การตั้งค่า</p>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-user-pen w-4 text-center"></i> จัดการโปรไฟล์</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-credit-card w-4 text-center"></i> บิลลิ่ง & แพ็กเกจ</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition">
+                                    <i class="fa-solid fa-globe w-4 text-center"></i> โดเมนที่กำหนดเอง <span class="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold ml-auto">PRO</span>
                                 </a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-users w-4 text-center"></i> จัดการทีม (Team)</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-users w-4 text-center"></i> จัดการทีม</a>
                             </div>
                             <div class="p-2 border-t border-gray-50 text-sm text-gray-600 font-medium space-y-1">
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-code w-4 text-center"></i> ตั้งค่า API & Webhooks</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-code w-4 text-center"></i> API & Webhooks</a>
                                 <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-regular fa-circle-question w-4 text-center"></i> ศูนย์ช่วยเหลือ (Support)</a>
                             </div>
                             <div class="p-2 border-t border-gray-50">
@@ -231,214 +205,214 @@
                         </div>
                     </div>
                 </div>
-            </header>
+            </div>
+        </header>
 
-            <!-- Natural Scrollable Workspace (No overflow-hidden limits) -->
-            <div class="p-4 md:p-8 flex-1">
+        <!-- Natural Scrollable Workspace Wrapper -->
+        <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+            
+            <!-- VIEW: DASHBOARD (Create + List) -->
+            <div id="view-dashboard" class="app-view fade-in">
                 
-                <!-- VIEW: DASHBOARD (Create + List) -->
-                <div id="view-dashboard" class="app-view max-w-[1200px] mx-auto fade-in">
-                    
-                    <!-- Neo-Card Quick Create Box -->
-                    <div class="glass-card rounded-3xl shadow-sm mb-10 overflow-hidden border border-gray-200">
-                        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 flex items-center gap-2 border-b border-gray-100">
-                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
-                            <h3 class="font-bold text-gray-800">สร้าง Dynamic QR ด่วน</h3>
+                <div class="flex items-center gap-3 mb-6">
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-gray-800">เครื่องมือสร้าง QR Code</h1>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+                        <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span></span> Live Sync
+                    </span>
+                </div>
+
+                <!-- Neo-Card Quick Create Box -->
+                <div class="glass-card rounded-3xl shadow-sm mb-12 overflow-hidden border border-gray-200 bg-white">
+                    <div class="p-6 md:p-8">
+                        <!-- Type Toggles Pill Style -->
+                        <div class="flex flex-wrap gap-2 mb-6 bg-gray-50 p-1.5 rounded-xl inline-flex border border-gray-200">
+                            <button onclick="selectQuickType('url')" id="qt-url" class="px-6 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-2 transition"><i class="fa-solid fa-link"></i> ลิงก์เว็บไซต์</button>
+                            <button onclick="selectQuickType('pdf')" id="qt-pdf" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-regular fa-file-pdf"></i> ไฟล์ PDF</button>
+                            <button onclick="selectQuickType('text')" id="qt-text" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-solid fa-font"></i> ข้อความ</button>
                         </div>
                         
-                        <div class="p-6 md:p-8">
-                            <!-- Type Toggles Pill Style -->
-                            <div class="flex flex-wrap gap-2 mb-6 bg-gray-50 p-1.5 rounded-xl inline-flex border border-gray-200">
-                                <button onclick="selectQuickType('url')" id="qt-url" class="px-6 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-2 transition"><i class="fa-solid fa-link"></i> ลิงก์เว็บไซต์</button>
-                                <button onclick="selectQuickType('pdf')" id="qt-pdf" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-regular fa-file-pdf"></i> ไฟล์ PDF</button>
-                                <button onclick="selectQuickType('text')" id="qt-text" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-solid fa-font"></i> ข้อความ</button>
-                            </div>
-                            
-                            <!-- Inputs -->
-                            <div class="flex flex-col lg:flex-row gap-4 items-start">
-                                <div class="flex-1 w-full relative">
-                                    <!-- URL -->
-                                    <div id="quick-url-wrap" class="relative">
-                                        <i class="fa-solid fa-earth-americas absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                        <input type="url" id="quick-url" placeholder="วางลิงก์ปลายทางที่นี่ (เช่น https://example.com)" class="quick-input w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium">
-                                    </div>
-                                    
-                                    <!-- Text -->
-                                    <div id="quick-text-wrap" class="hidden relative">
-                                        <textarea id="quick-text" placeholder="พิมพ์ข้อความที่จะแสดง (ไม่สามารถติดตามการสแกนได้)" rows="2" class="quick-input w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium resize-none"></textarea>
-                                    </div>
-                                    
-                                    <!-- PDF Upload -->
-                                    <div id="quick-pdf-wrap" class="hidden relative">
-                                        <div class="quick-input border-2 border-dashed border-primary/30 bg-primary/5 rounded-2xl px-4 py-6 text-center hover:bg-primary/10 transition cursor-pointer relative">
-                                            <input type="file" id="quick-file" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                                            <div class="flex flex-col items-center justify-center gap-2 text-primary">
-                                                <i class="fa-solid fa-cloud-arrow-up text-3xl mb-1"></i> 
-                                                <span id="quick-file-name" class="font-bold text-lg">คลิกเพื่อเลือกไฟล์ PDF</span>
-                                                <span class="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">ขนาดสูงสุด 10MB</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <!-- Inputs -->
+                        <div class="flex flex-col lg:flex-row gap-4 items-start">
+                            <div class="flex-1 w-full relative">
+                                <!-- URL -->
+                                <div id="quick-url-wrap" class="relative">
+                                    <i class="fa-solid fa-earth-americas absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <input type="url" id="quick-url" placeholder="วางลิงก์ปลายทางที่นี่ (เช่น https://example.com)" class="quick-input w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium">
                                 </div>
                                 
-                                <button onclick="quickSaveQR()" id="btn-quick-save" class="w-full lg:w-auto bg-gradient-to-r from-primary to-secondary text-white px-10 py-4 rounded-2xl font-bold hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 transition-all shrink-0 flex items-center justify-center gap-2">
-                                    สร้าง QR Code <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Customization Settings -->
-                            <div class="mt-4 pt-4 border-t border-gray-100 hidden" id="quick-advanced">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">ชื่อเรียก (เพื่อจำง่าย)</label>
-                                        <input type="text" id="quick-name" placeholder="เช่น เมนูร้านอาหาร, นามบัตร" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary focus:bg-white">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">โทนสีของคิวอาร์</label>
-                                        <div class="flex gap-2">
-                                            <button onclick="setQuickColor('#0f172a')" class="qc-btn w-8 h-8 rounded-full bg-slate-900 ring-2 ring-offset-2 ring-slate-900"></button>
-                                            <button onclick="setQuickColor('#8b5cf6')" class="qc-btn w-8 h-8 rounded-full bg-violet-500"></button>
-                                            <button onclick="setQuickColor('#ec4899')" class="qc-btn w-8 h-8 rounded-full bg-pink-500"></button>
-                                            <button onclick="setQuickColor('#0ea5e9')" class="qc-btn w-8 h-8 rounded-full bg-sky-500"></button>
-                                            <input type="color" id="quick-color-picker" onchange="setQuickColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer shrink-0">
+                                <!-- Text -->
+                                <div id="quick-text-wrap" class="hidden relative">
+                                    <textarea id="quick-text" placeholder="พิมพ์ข้อความที่จะแสดง (ไม่สามารถติดตามการสแกนได้)" rows="2" class="quick-input w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium resize-none"></textarea>
+                                </div>
+                                
+                                <!-- PDF Upload -->
+                                <div id="quick-pdf-wrap" class="hidden relative">
+                                    <div class="quick-input border-2 border-dashed border-primary/30 bg-primary/5 rounded-2xl px-4 py-6 text-center hover:bg-primary/10 transition cursor-pointer relative">
+                                        <input type="file" id="quick-file" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                        <div class="flex flex-col items-center justify-center gap-2 text-primary">
+                                            <i class="fa-solid fa-cloud-arrow-up text-3xl mb-1"></i> 
+                                            <span id="quick-file-name" class="font-bold text-lg">คลิกเพื่อเลือกไฟล์ PDF</span>
+                                            <span class="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">ขนาดสูงสุด 10MB</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-4 text-center lg:text-left">
-                                <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
-                            </div>
-
-                            <!-- Progress Bar for PDF -->
-                            <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                                <div class="flex justify-between text-sm text-gray-700 font-bold mb-2">
-                                    <span><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...</span>
-                                    <span id="quick-progress-text" class="text-primary">0%</span>
+                            
+                            <button onclick="quickSaveQR()" id="btn-quick-save" class="w-full lg:w-auto bg-gradient-to-r from-primary to-secondary text-white px-10 py-4 rounded-2xl font-bold hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 transition-all shrink-0 flex items-center justify-center gap-2">
+                                สร้าง QR Code <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Customization Settings -->
+                        <div class="mt-4 pt-4 border-t border-gray-100 hidden" id="quick-advanced">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">ชื่อเรียก (เพื่อจำง่าย)</label>
+                                    <input type="text" id="quick-name" placeholder="เช่น เมนูร้านอาหาร, นามบัตร" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary focus:bg-white">
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                    <div id="quick-progress-bar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">โทนสีของคิวอาร์</label>
+                                    <div class="flex gap-2">
+                                        <button onclick="setQuickColor('#0f172a')" class="qc-btn w-8 h-8 rounded-full bg-slate-900 ring-2 ring-offset-2 ring-slate-900"></button>
+                                        <button onclick="setQuickColor('#8b5cf6')" class="qc-btn w-8 h-8 rounded-full bg-violet-500"></button>
+                                        <button onclick="setQuickColor('#ec4899')" class="qc-btn w-8 h-8 rounded-full bg-pink-500"></button>
+                                        <button onclick="setQuickColor('#0ea5e9')" class="qc-btn w-8 h-8 rounded-full bg-sky-500"></button>
+                                        <input type="color" id="quick-color-picker" onchange="setQuickColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer shrink-0">
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="mt-4 text-center lg:text-left">
+                            <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
+                        </div>
 
-                    <!-- List Header & Filters -->
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 class="text-2xl font-extrabold text-gray-800">คิวอาร์โค้ดของคุณ</h2>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <div class="relative w-full md:w-64">
-                                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                                <input type="text" placeholder="ค้นหาชื่อ หรือ ลิงก์..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-primary shadow-sm">
+                        <!-- Progress Bar for PDF -->
+                        <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl fade-in">
+                            <div class="flex justify-between text-sm text-gray-700 font-bold mb-2">
+                                <span><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ฐานข้อมูล...</span>
+                                <span id="quick-progress-text" class="text-primary">0%</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <div id="loading-list" class="flex justify-center py-16 hidden">
-                        <div class="flex flex-col items-center gap-3">
-                            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-primary"></i>
-                            <p class="text-gray-500 font-medium">กำลังดึงข้อมูล...</p>
-                        </div>
-                    </div>
-
-                    <div id="empty-list" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300 hidden">
-                        <div class="w-20 h-20 bg-indigo-50 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                            <i class="fa-solid fa-qrcode"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-2">พื้นที่ยังว่างเปล่า</h3>
-                        <p class="text-gray-500">สร้าง QR Code ตัวแรกด้วยกล่องเครื่องมือด้านบนได้เลย</p>
-                    </div>
-
-                    <!-- Grid Modern Cards -->
-                    <div id="qr-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
-                        <!-- Cards injected via JS -->
-                    </div>
-                </div>
-
-                <!-- VIEW: ANALYTICS -->
-                <div id="view-analytics" class="app-view hidden max-w-[1000px] mx-auto fade-in">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                        <h1 class="text-3xl font-extrabold text-gray-900">ภาพรวมสถิติ</h1>
-                        <span class="inline-flex items-center gap-2 text-xs text-green-700 font-bold bg-green-100 px-3 py-1.5 rounded-full border border-green-200">
-                            <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span></span> Real-time Sync Active
-                        </span>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
-                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full"></div>
-                            <div>
-                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">รหัส QR ทั้งหมด</p>
-                                <p id="stat-total-qr" class="text-4xl font-black text-gray-900">0</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div id="quick-progress-bar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                             </div>
-                            <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-qrcode"></i></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
-                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/5 rounded-full"></div>
-                            <div>
-                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ยอดสแกนรวม</p>
-                                <p id="stat-total-scans" class="text-4xl font-black text-gray-900">0</p>
-                            </div>
-                            <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-eye"></i></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
-                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/5 rounded-full"></div>
-                            <div class="min-w-0 pr-2">
-                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ฮิตที่สุด</p>
-                                <p id="stat-top-qr" class="text-lg font-extrabold text-gray-900 truncate">-</p>
-                            </div>
-                            <div class="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl shadow-inner shrink-0"><i class="fa-solid fa-trophy"></i></div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div class="p-6 border-b border-gray-50 bg-gray-50/50">
-                            <h3 class="text-lg font-extrabold text-gray-900">อันดับการสแกนรายลิงก์</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-white text-gray-400 text-xs uppercase tracking-widest border-b border-gray-100">
-                                        <th class="p-5 font-bold">ชื่อรหัส QR</th>
-                                        <th class="p-5 font-bold text-center">ประเภท</th>
-                                        <th class="p-5 font-bold text-right">ยอดสแกน</th>
-                                        <th class="p-5 font-bold text-center">วันที่สร้าง</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="analytics-table" class="text-sm divide-y divide-gray-50">
-                                    <!-- Injected via JS -->
-                                </tbody>
-                            </table>
+                            <p class="text-xs text-gray-400 mt-2">* หากโหลดค้างที่ 0% แสดงว่า Firebase Storage Rules ของคุณตั้งค่าปฏิเสธการอัปโหลดไฟล์อยู่ครับ</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW: ADMIN -->
-                <div id="view-admin" class="app-view hidden max-w-[1000px] mx-auto fade-in">
-                    <h1 class="text-3xl font-black text-gray-900 mb-2 flex items-center gap-3"><i class="fa-solid fa-shield-halved text-red-500"></i> Admin Panel</h1>
-                    <p class="text-gray-500 mb-8 text-lg">ศูนย์ควบคุมและตรวจสอบข้อมูลของผู้ใช้ทั้งหมด</p>
-                    
-                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-100">
-                                        <th class="p-5 font-bold">ประเภท</th>
-                                        <th class="p-5 font-bold">ชื่อรหัส QR / ปลายทาง</th>
-                                        <th class="p-5 font-bold">เจ้าของ (Email)</th>
-                                        <th class="p-5 font-bold">สแกน</th>
-                                        <th class="p-5 font-bold text-center">ลบ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="admin-table-body" class="text-sm divide-y divide-gray-50">
-                                    <!-- Injected via JS -->
-                                </tbody>
-                            </table>
+                <!-- List Header & Filters -->
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-800">คิวอาร์โค้ดที่สร้างแล้ว</h2>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <div class="relative w-full md:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" placeholder="ค้นหาชื่อ หรือ ลิงก์..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-primary shadow-sm">
                         </div>
                     </div>
                 </div>
 
+                <div id="loading-list" class="flex justify-center py-16 hidden">
+                    <div class="flex flex-col items-center gap-3">
+                        <i class="fa-solid fa-circle-notch fa-spin text-4xl text-primary"></i>
+                        <p class="text-gray-500 font-medium">กำลังดึงข้อมูล...</p>
+                    </div>
+                </div>
+
+                <div id="empty-list" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300 hidden">
+                    <div class="w-20 h-20 bg-indigo-50 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                        <i class="fa-solid fa-qrcode"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">พื้นที่ยังว่างเปล่า</h3>
+                    <p class="text-gray-500">สร้าง QR Code ตัวแรกด้วยกล่องเครื่องมือด้านบนได้เลย</p>
+                </div>
+
+                <!-- Grid Modern Cards -->
+                <div id="qr-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
+                    <!-- Cards injected via JS -->
+                </div>
             </div>
-        </div>
+
+            <!-- VIEW: ANALYTICS -->
+            <div id="view-analytics" class="app-view hidden fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                    <h1 class="text-3xl font-extrabold text-gray-900">ภาพรวมสถิติเชิงลึก</h1>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full"></div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">รหัส QR ทั้งหมด</p>
+                            <p id="stat-total-qr" class="text-4xl font-black text-gray-900">0</p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-qrcode"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/5 rounded-full"></div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ยอดสแกนรวม</p>
+                            <p id="stat-total-scans" class="text-4xl font-black text-gray-900">0</p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-eye"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/5 rounded-full"></div>
+                        <div class="min-w-0 pr-2">
+                            <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ฮิตที่สุด</p>
+                            <p id="stat-top-qr" class="text-lg font-extrabold text-gray-900 truncate">-</p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl shadow-inner shrink-0"><i class="fa-solid fa-trophy"></i></div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-gray-50 bg-gray-50/50">
+                        <h3 class="text-lg font-extrabold text-gray-900">อันดับการสแกนรายลิงก์</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white text-gray-400 text-xs uppercase tracking-widest border-b border-gray-100">
+                                    <th class="p-5 font-bold">ชื่อรหัส QR</th>
+                                    <th class="p-5 font-bold text-center">ประเภท</th>
+                                    <th class="p-5 font-bold text-right">ยอดสแกน</th>
+                                    <th class="p-5 font-bold text-center">วันที่สร้าง</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analytics-table" class="text-sm divide-y divide-gray-50">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ADMIN -->
+            <div id="view-admin" class="app-view hidden fade-in">
+                <h1 class="text-3xl font-black text-gray-900 mb-2 flex items-center gap-3"><i class="fa-solid fa-shield-halved text-red-500"></i> Admin Panel</h1>
+                <p class="text-gray-500 mb-8 text-lg">ศูนย์ควบคุมและตรวจสอบข้อมูลของผู้ใช้ทั้งหมด</p>
+                
+                <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-100">
+                                    <th class="p-5 font-bold">ประเภท</th>
+                                    <th class="p-5 font-bold">ชื่อรหัส QR / ปลายทาง</th>
+                                    <th class="p-5 font-bold">เจ้าของ (Email)</th>
+                                    <th class="p-5 font-bold">สแกน</th>
+                                    <th class="p-5 font-bold text-center">ลบ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body" class="text-sm divide-y divide-gray-50">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <!-- Edit QR Modal -->
@@ -601,7 +575,7 @@
                             if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-700', 'text-red-500');
                             document.querySelector('.animate-spin')?.classList.add('hidden');
                             document.querySelector('.animate-pulse')?.classList.replace('text-primary', 'text-red-500');
-                            document.querySelector('.animate-pulse')?.classList.remove('animate-pulse');
+                            document.querySelector('.animate-pulse')?.classList.remove('animate-pulse', 'animate-spin');
                             return; 
                         }
                         
@@ -649,7 +623,11 @@
                     isAdmin = (user.email === ADMIN_EMAIL);
                     if(safeEl('user-email-text')) safeEl('user-email-text').innerText = user.email;
                     if(safeEl('drop-email')) safeEl('drop-email').innerText = user.email;
-                    if(isAdmin && safeEl('admin-menu-section')) safeEl('admin-menu-section').classList.remove('hidden');
+                    
+                    if(isAdmin) {
+                        if(safeEl('nav-admin')) safeEl('nav-admin').classList.remove('hidden');
+                        if(safeEl('nav-admin-mobile')) safeEl('nav-admin-mobile').classList.remove('hidden');
+                    }
                     
                     elLanding?.classList.add('hidden');
                     elApp?.classList.remove('hidden');
@@ -676,26 +654,28 @@
             document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
             safeEl(`view-${viewId}`)?.classList.remove('hidden');
             
-            document.querySelectorAll('.sidebar-menu').forEach(m => {
-                m.classList.remove('bg-white/10', 'text-white', 'hover:bg-white/20');
-                if(!m.classList.contains('text-red-300')) {
-                    m.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+            document.querySelectorAll('.top-nav-btn').forEach(m => {
+                m.classList.remove('text-primary', 'font-bold', 'border-primary');
+                if(!m.classList.contains('text-red-400') && !m.classList.contains('text-red-600')) {
+                    m.classList.add('text-gray-500', 'border-transparent');
+                } else {
+                    m.classList.add('border-transparent');
                 }
             });
+            
             const activeMenu = safeEl(`nav-${viewId}`);
             if(activeMenu && viewId !== 'admin') {
-                activeMenu.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
-                activeMenu.classList.add('bg-white/10', 'text-white', 'hover:bg-white/20');
+                activeMenu.classList.remove('text-gray-500', 'border-transparent');
+                activeMenu.classList.add('text-primary', 'font-bold', 'border-primary');
+            } else if (activeMenu && viewId === 'admin') {
+                activeMenu.classList.remove('border-transparent');
+                activeMenu.classList.add('font-bold', 'border-red-400');
             }
             
             const titles = {'dashboard':'แผงควบคุม (Dashboard)', 'analytics':'ภาพรวมสถิติ (Analytics)', 'admin':'ผู้ดูแลระบบ (Admin Panel)'};
             if(safeEl('header-title')) safeEl('header-title').innerText = titles[viewId] || '';
 
             if(viewId === 'dashboard' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
-            
-            // Close mobile sidebar on navigate
-            safeEl('sidebar')?.classList.add('-translate-x-full');
-            safeEl('sidebar-overlay')?.classList.add('hidden');
         };
 
         // --- REAL-TIME SYNC ---
@@ -883,11 +863,11 @@
                     const uploadTask = uploadBytesResumable(fileRef, quickFileObj);
 
                     finalDestination = await new Promise((resolve, reject) => {
-                        // Safety timeout (30 seconds) to prevent infinite loop if rules block upload silently
+                        // Safety timeout to prevent infinite loop if rules block upload silently
                         const uploadTimeout = setTimeout(() => {
                             uploadTask.cancel();
-                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout) ตรวจสอบอินเทอร์เน็ตหรือกฏ Storage"));
-                        }, 30000);
+                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout) โปรดตรวจสอบอินเทอร์เน็ตหรือกฏ Storage Rules ของคุณ"));
+                        }, 25000);
 
                         uploadTask.on('state_changed', 
                             (snap) => { 
@@ -897,7 +877,12 @@
                             }, 
                             err => {
                                 clearTimeout(uploadTimeout);
-                                reject(err);
+                                // Translate common firebase storage rule errors
+                                if (err.code === 'storage/unauthorized') {
+                                    reject(new Error("Firebase Storage Rules ปฏิเสธการอัปโหลด โปรดตั้งค่าให้ allow write"));
+                                } else {
+                                    reject(err);
+                                }
                             }, 
                             async () => {
                                 clearTimeout(uploadTimeout);
@@ -935,7 +920,6 @@
             } catch (error) {
                 console.error("Upload Error:", error);
                 showToast("อัปโหลดไม่สำเร็จ: " + error.message, "error");
-                if(progressWrap) progressWrap.classList.add('hidden');
             } finally {
                 btn.disabled = false; 
                 if(spin) spin.classList.add('hidden');
@@ -1188,29 +1172,16 @@
             toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3500);
         };
 
-        // Mobile Sidebar Logic
-        const toggleSidebar = () => {
-            const sidebar = safeEl('sidebar');
-            const overlay = safeEl('sidebar-overlay');
-            if(!sidebar || !overlay) return;
-            
-            if(sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            }
-        };
-        
+        // Mobile Menu Logic (Removed sidebar logic, keeping only dropdown toggles if needed)
         const btnMobileMenuEl = safeEl('btn-mobile-menu');
-        if(btnMobileMenuEl) btnMobileMenuEl.addEventListener('click', toggleSidebar);
-        
-        const sidebarOverlayEl = safeEl('sidebar-overlay');
-        if(sidebarOverlayEl) sidebarOverlayEl.addEventListener('click', toggleSidebar);
-        
-        const btnCloseSidebarEl = safeEl('btn-close-sidebar');
-        if(btnCloseSidebarEl) btnCloseSidebarEl.addEventListener('click', toggleSidebar);
+        if(btnMobileMenuEl) {
+            btnMobileMenuEl.addEventListener('click', () => {
+                // In the new layout, we don't have a sidebar. We can trigger the profile dropdown or just ignore it.
+                // Or you can create a simple slide down menu. For now, it will trigger the profile dropdown.
+                const profileBtn = document.querySelector('.group button');
+                if(profileBtn) profileBtn.focus();
+            });
+        }
 
         init();
 
