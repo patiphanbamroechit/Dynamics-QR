@@ -157,7 +157,7 @@
 
                 <!-- Right Profile Menu (Always Top Right) -->
                 <div class="flex items-center gap-4">
-                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-primary rounded-full text-xs font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-primary rounded-full text-xs font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition" onclick="showFeatureNotAvailable()">
                         <i class="fa-solid fa-crown text-amber-500"></i> อัปเกรดเป็น Pro
                     </div>
                     
@@ -186,16 +186,16 @@
                             <!-- Profile Management Options -->
                             <div class="p-2 py-3 text-sm text-gray-600 font-medium space-y-1">
                                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-3 mb-2">การตั้งค่า</p>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-user-pen w-4 text-center"></i> จัดการโปรไฟล์</a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-credit-card w-4 text-center"></i> บิลลิ่ง & แพ็กเกจ</a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition">
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-user-pen w-4 text-center"></i> จัดการโปรไฟล์</a>
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-credit-card w-4 text-center"></i> บิลลิ่ง & แพ็กเกจ</a>
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition">
                                     <i class="fa-solid fa-globe w-4 text-center"></i> โดเมนที่กำหนดเอง <span class="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold ml-auto">PRO</span>
                                 </a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-users w-4 text-center"></i> จัดการทีม</a>
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-users w-4 text-center"></i> จัดการทีม</a>
                             </div>
                             <div class="p-2 border-t border-gray-50 text-sm text-gray-600 font-medium space-y-1">
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-code w-4 text-center"></i> API & Webhooks</a>
-                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-regular fa-circle-question w-4 text-center"></i> ศูนย์ช่วยเหลือ (Support)</a>
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-code w-4 text-center"></i> API & Webhooks</a>
+                                <a href="#" onclick="showFeatureNotAvailable(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-regular fa-circle-question w-4 text-center"></i> ศูนย์ช่วยเหลือ (Support)</a>
                             </div>
                             <div class="p-2 border-t border-gray-50">
                                 <button id="btn-logout" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition">
@@ -289,13 +289,12 @@
                         <!-- Progress Bar for PDF -->
                         <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl fade-in">
                             <div class="flex justify-between text-sm text-gray-700 font-bold mb-2">
-                                <span><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ฐานข้อมูล...</span>
+                                <span id="quick-progress-status-text"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ฐานข้อมูล...</span>
                                 <span id="quick-progress-text" class="text-primary">0%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                 <div id="quick-progress-bar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                             </div>
-                            <p class="text-xs text-gray-400 mt-2">* หากโหลดค้างที่ 0% แสดงว่า Firebase Storage Rules ของคุณตั้งค่าปฏิเสธการอัปโหลดไฟล์อยู่ครับ</p>
                         </div>
                     </div>
                 </div>
@@ -513,6 +512,7 @@
     <!-- ================= FIREBASE & APP LOGIC ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -524,10 +524,12 @@
             projectId: "dynamics-qr",
             storageBucket: "dynamics-qr.firebasestorage.app",
             messagingSenderId: "11257712570",
-            appId: "1:11257712570:web:8fc95a48c55ee206105783"
+            appId: "1:11257712570:web:8fc95a48c55ee206105783",
+            measurementId: "G-X04VY6WJFS"
         };
 
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const googleProvider = new GoogleAuthProvider();
         const db = getFirestore(app);
@@ -678,6 +680,10 @@
             if(viewId === 'dashboard' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
         };
 
+        window.showFeatureNotAvailable = () => {
+            showToast("ฟีเจอร์นี้อยู่ระหว่างการพัฒนา!", "info");
+        };
+
         // --- REAL-TIME SYNC ---
         function subscribeToData(viewId) {
             if (!currentUser) return;
@@ -819,6 +825,7 @@
             if(!btn) return;
             const spin = btn.querySelector('.fa-circle-notch');
             const progressWrap = safeEl('quick-progress-wrap');
+            const statusText = safeEl('quick-progress-status-text');
             
             let finalDestination = "";
             let storagePath = null;
@@ -856,6 +863,7 @@
                     const bar = safeEl('quick-progress-bar');
                     const txt = safeEl('quick-progress-text');
                     if(progressWrap) progressWrap.classList.remove('hidden');
+                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ฐานข้อมูล...';
                     if(bar) bar.style.width = '0%';
                     if(txt) txt.innerText = '0%';
 
@@ -863,11 +871,11 @@
                     const uploadTask = uploadBytesResumable(fileRef, quickFileObj);
 
                     finalDestination = await new Promise((resolve, reject) => {
-                        // Safety timeout to prevent infinite loop if rules block upload silently
+                        // Safety timeout (30 seconds)
                         const uploadTimeout = setTimeout(() => {
                             uploadTask.cancel();
-                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout) โปรดตรวจสอบอินเทอร์เน็ตหรือกฏ Storage Rules ของคุณ"));
-                        }, 25000);
+                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout) กรุณาตรวจสอบอินเทอร์เน็ตหรือกฏ Storage Rules"));
+                        }, 30000);
 
                         uploadTask.on('state_changed', 
                             (snap) => { 
@@ -877,9 +885,8 @@
                             }, 
                             err => {
                                 clearTimeout(uploadTimeout);
-                                // Translate common firebase storage rule errors
                                 if (err.code === 'storage/unauthorized') {
-                                    reject(new Error("Firebase Storage Rules ปฏิเสธการอัปโหลด โปรดตั้งค่าให้ allow write"));
+                                    reject(new Error("Firebase ปฏิเสธการอัปโหลด โปรดตั้งค่า Storage Rules ให้เป็น allow read, write;"));
                                 } else {
                                     reject(err);
                                 }
@@ -916,14 +923,15 @@
                     safeEl('quick-file-name').classList.remove('text-primary');
                 }
                 safeEl('quick-advanced')?.classList.add('hidden');
+                if(progressWrap) progressWrap.classList.add('hidden');
                 
             } catch (error) {
                 console.error("Upload Error:", error);
-                showToast("อัปโหลดไม่สำเร็จ: " + error.message, "error");
+                if(statusText) statusText.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>อัปโหลดไม่สำเร็จ: ${error.message}`;
+                showToast("อัปโหลดไม่สำเร็จ โปรดดูข้อความด้านล่าง", "error");
             } finally {
                 btn.disabled = false; 
                 if(spin) spin.classList.add('hidden');
-                if(progressWrap) progressWrap.classList.add('hidden');
             }
         };
 
@@ -1164,20 +1172,30 @@
             const t = safeEl('toast');
             if(!t) return;
             if(safeEl('toast-message')) safeEl('toast-message').innerText = msg;
-            t.classList.replace(type === 'error' ? 'bg-dark' : 'bg-red-600', type === 'error' ? 'bg-red-600' : 'bg-dark');
-            t.classList.replace(type === 'error' ? 'border-gray-700' : 'border-red-700', type === 'error' ? 'border-red-700' : 'border-gray-700');
-            if(safeEl('toast-icon')) safeEl('toast-icon').className = type === 'error' ? 'fa-solid fa-circle-exclamation text-white text-xl' : 'fa-solid fa-circle-check text-green-400 text-xl';
+            
+            t.classList.remove('bg-dark', 'bg-red-600', 'bg-blue-600');
+            t.classList.remove('border-gray-700', 'border-red-700', 'border-blue-700');
+            
+            if (type === 'error') {
+                t.classList.add('bg-red-600', 'border-red-700');
+                if(safeEl('toast-icon')) safeEl('toast-icon').className = 'fa-solid fa-circle-exclamation text-white text-xl';
+            } else if (type === 'info') {
+                t.classList.add('bg-blue-600', 'border-blue-700');
+                if(safeEl('toast-icon')) safeEl('toast-icon').className = 'fa-solid fa-circle-info text-white text-xl';
+            } else {
+                t.classList.add('bg-dark', 'border-gray-700');
+                if(safeEl('toast-icon')) safeEl('toast-icon').className = 'fa-solid fa-circle-check text-green-400 text-xl';
+            }
+            
             t.classList.remove('translate-x-[120%]');
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3500);
         };
 
-        // Mobile Menu Logic (Removed sidebar logic, keeping only dropdown toggles if needed)
+        // Mobile Menu Logic
         const btnMobileMenuEl = safeEl('btn-mobile-menu');
         if(btnMobileMenuEl) {
             btnMobileMenuEl.addEventListener('click', () => {
-                // In the new layout, we don't have a sidebar. We can trigger the profile dropdown or just ignore it.
-                // Or you can create a simple slide down menu. For now, it will trigger the profile dropdown.
                 const profileBtn = document.querySelector('.group button');
                 if(profileBtn) profileBtn.focus();
             });
