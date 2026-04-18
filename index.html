@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic QR Generator</title>
+    <title>Dynamic QR Generator - Realtime</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -46,7 +46,7 @@
     <div id="sys-loading" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
         <i class="fa-solid fa-qrcode text-6xl text-primary mb-6 animate-pulse"></i>
         <div id="sys-loading-text" class="text-lg font-medium text-gray-600">กำลังโหลดข้อมูล...</div>
-        <div class="mt-4 w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div id="sys-progress-bar" class="mt-4 w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
             <div class="h-full bg-primary rounded-full animate-[progress_1.5s_ease-in-out_infinite]" style="width: 50%;"></div>
         </div>
     </div>
@@ -141,8 +141,11 @@
     <div id="scan-details-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-2xl relative shadow-2xl fade-in flex flex-col max-h-[80vh]">
             <div class="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
-                <h2 id="scan-details-title" class="text-xl font-bold text-gray-900 truncate">รายละเอียดการสแกน</h2>
-                <button onclick="document.getElementById('scan-details-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <div>
+                    <h2 id="scan-details-title" class="text-xl font-bold text-gray-900 truncate">รายละเอียดการสแกน</h2>
+                    <p class="text-xs text-green-600 mt-1 font-medium flex items-center gap-1"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Live Syncing</p>
+                </div>
+                <button onclick="closeScanDetails()" class="text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -186,7 +189,7 @@
                 สร้าง <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-600">Dynamic QR</span><br>ที่เปลี่ยนใจได้เสมอ
             </h1>
             <p class="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
-                ไม่จำเป็นต้องพิมพ์ QR Code ใหม่เมื่อเปลี่ยนข้อมูล แก้ไขลิงก์ปลายทางได้ตลอดเวลา พร้อมระบบติดตามยอดสแกน (Analytics) ในตัว
+                ไม่จำเป็นต้องพิมพ์ QR Code ใหม่เมื่อเปลี่ยนข้อมูล แก้ไขลิงก์ปลายทางได้ตลอดเวลา พร้อมระบบอัปเดตแบบ Real-time Tracker
             </p>
             <div class="flex gap-4 mb-20">
                 <button onclick="toggleLoginModal(true)" class="bg-primary text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-secondary transition shadow-xl shadow-indigo-200 flex items-center gap-2">
@@ -202,13 +205,13 @@
                 </div>
                 <div class="p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition">
                     <div class="w-12 h-12 bg-white text-primary rounded-xl flex items-center justify-center text-xl mb-4 shadow-sm"><i class="fa-solid fa-chart-line"></i></div>
-                    <h3 class="text-xl font-bold mb-2 text-dark">Scan Tracking</h3>
-                    <p class="text-gray-500 text-sm">รู้ความเคลื่อนไหวด้วยระบบนับจำนวนการสแกนแบบเรียลไทม์บน Dashboard ของคุณ</p>
+                    <h3 class="text-xl font-bold mb-2 text-dark">Real-time Analytics</h3>
+                    <p class="text-gray-500 text-sm">รู้ความเคลื่อนไหวด้วยระบบนับจำนวนการสแกนแบบเรียลไทม์บน Dashboard ของคุณทันที</p>
                 </div>
                 <div class="p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition">
                     <div class="w-12 h-12 bg-white text-primary rounded-xl flex items-center justify-center text-xl mb-4 shadow-sm"><i class="fa-solid fa-palette"></i></div>
                     <h3 class="text-xl font-bold mb-2 text-dark">Custom Design</h3>
-                    <p class="text-gray-500 text-sm">ปรับแต่งสีสันของ QR Code ให้เข้ากับแบรนด์ของคุณ พร้อมดาวน์โหลดเป็น PNG คุณภาพสูง</p>
+                    <p class="text-gray-500 text-sm">ปรับแต่งสีสันของ QR Code ให้เข้ากับแบรนด์ของคุณ พร้อมดาวน์โหลดเป็น PNG, SVG หรือ PDF</p>
                 </div>
             </div>
         </main>
@@ -218,7 +221,7 @@
     <div id="page-app" class="hidden h-screen flex overflow-hidden bg-slate-50">
         <!-- Sidebar -->
         <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
-            <div class="h-16 flex items-center px-6 border-b border-gray-100">
+            <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
                 <div class="flex items-center gap-2 text-primary font-bold text-xl">
                     <i class="fa-solid fa-qrcode"></i> <span>DynamicQR</span>
                 </div>
@@ -231,7 +234,12 @@
             </div>
 
             <nav class="flex-1 px-4 space-y-1 overflow-y-auto">
-                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-4 px-2">เมนูหลัก</div>
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-4 px-2 flex justify-between items-center">
+                    <span>เมนูหลัก</span>
+                    <span class="flex items-center gap-1 text-[10px] text-green-500 font-bold bg-green-50 px-1.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-circle text-[6px] animate-pulse"></i> Live
+                    </span>
+                </div>
                 <button onclick="navTo('list')" id="menu-list" class="sidebar-menu w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-primary transition">
                     <i class="fa-solid fa-layer-group w-5 text-center"></i> คิวอาร์โค้ดของฉัน
                 </button>
@@ -269,7 +277,12 @@
                 <div class="flex items-center gap-2 text-primary font-bold text-xl">
                     <i class="fa-solid fa-qrcode"></i> <span>DynamicQR</span>
                 </div>
-                <button id="btn-mobile-menu" class="text-gray-500 hover:text-gray-800 text-xl"><i class="fa-solid fa-bars"></i></button>
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center gap-1 text-[10px] text-green-500 font-bold bg-green-50 px-1.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-circle text-[6px] animate-pulse"></i> Live
+                    </span>
+                    <button id="btn-mobile-menu" class="text-gray-500 hover:text-gray-800 text-xl"><i class="fa-solid fa-bars"></i></button>
+                </div>
             </header>
 
             <!-- Views Container -->
@@ -280,7 +293,7 @@
                     <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
                         <div>
                             <h1 class="text-2xl font-bold text-slate-900">คิวอาร์โค้ดของฉัน</h1>
-                            <p class="text-gray-500 text-sm mt-1">จัดการและติดตามผล QR Code ทั้งหมดที่คุณสร้าง</p>
+                            <p class="text-gray-500 text-sm mt-1">จัดการและติดตามผล QR Code ทั้งหมดที่คุณสร้างแบบ Real-time</p>
                         </div>
                         <button onclick="navTo('create')" class="md:hidden bg-primary text-white py-2 px-4 rounded-lg font-medium shadow-md">สร้างใหม่</button>
                     </div>
@@ -305,7 +318,7 @@
 
                 <!-- VIEW: ANALYTICS -->
                 <div id="view-analytics" class="app-view hidden max-w-6xl mx-auto fade-in">
-                    <h1 class="text-2xl font-bold text-slate-900 mb-6">ภาพรวมสถิติ</h1>
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6">ภาพรวมสถิติแบบ Real-time</h1>
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -315,12 +328,13 @@
                                 <p id="stat-total-qr" class="text-3xl font-bold text-gray-900">0</p>
                             </div>
                         </div>
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 relative overflow-hidden">
                             <div class="w-14 h-14 rounded-full bg-green-50 text-green-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-eye"></i></div>
                             <div>
                                 <p class="text-sm text-gray-500 font-medium">ยอดสแกนรวม (Scans)</p>
-                                <p id="stat-total-scans" class="text-3xl font-bold text-gray-900">0</p>
+                                <p id="stat-total-scans" class="text-3xl font-bold text-gray-900 transition-all duration-300">0</p>
                             </div>
+                            <div class="absolute top-2 right-2 text-green-500"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i></div>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                             <div class="w-14 h-14 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-link"></i></div>
@@ -338,7 +352,7 @@
                                 <thead>
                                     <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                                         <th class="p-4 rounded-l-lg font-semibold">ชื่อ QR</th>
-                                        <th class="p-4 font-semibold">ประเภท</th>
+                                        <th class="p-4 font-semibold">สถานะ</th>
                                         <th class="p-4 font-semibold text-right">ยอดสแกน</th>
                                         <th class="p-4 rounded-r-lg font-semibold text-center">วันที่สร้าง</th>
                                     </tr>
@@ -390,7 +404,7 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">ลิงก์เว็บไซต์ (Website URL)</label>
                                         <input type="url" id="create-url" placeholder="https://www.example.com" oninput="updateQRPreview()" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
-                                        <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-bolt text-yellow-500"></i> Dynamic: คุณสามารถแก้ไขลิงก์นี้ได้ภายหลัง</p>
+                                        <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-bolt text-yellow-500"></i> Dynamic: คุณสามารถแก้ไขลิงก์และระงับการใช้งานได้ภายหลัง</p>
                                     </div>
                                 </div>
 
@@ -506,7 +520,7 @@
                 <!-- VIEW: ADMIN -->
                 <div id="view-admin" class="app-view hidden max-w-6xl mx-auto fade-in">
                     <h1 class="text-2xl font-bold text-red-700 mb-2 flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i> ศูนย์ควบคุมผู้ดูแลระบบ</h1>
-                    <p class="text-gray-500 mb-6">แสดงข้อมูล QR Code ทั้งหมดของผู้ใช้ทุกคนในระบบ</p>
+                    <p class="text-gray-500 mb-6">แสดงข้อมูล QR Code ทั้งหมดของผู้ใช้ทุกคนในระบบแบบ Real-time</p>
                     
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="overflow-x-auto">
@@ -515,7 +529,7 @@
                                     <tr class="bg-gray-50 text-gray-600 text-sm">
                                         <th class="p-4 border-b font-medium">ประเภท</th>
                                         <th class="p-4 border-b font-medium">ชื่อ QR</th>
-                                        <th class="p-4 border-b font-medium">เจ้าของ (Email)</th>
+                                        <th class="p-4 border-b font-medium">สถานะ</th>
                                         <th class="p-4 border-b font-medium">สแกน</th>
                                         <th class="p-4 border-b font-medium text-center">จัดการ</th>
                                     </tr>
@@ -536,7 +550,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         // --- Firebase Config (User's Config) ---
@@ -564,7 +578,12 @@
         let isAdmin = false;
         let allItems = [];
         let currentDownloadItem = null;
+        let activeView = 'list';
         
+        // Listeners for Realtime
+        let itemsUnsubscribe = null;
+        let scanDetailsUnsubscribe = null;
+
         // Create Builder State
         let currentCreateType = 'url';
         let currentQRColor = '#000000';
@@ -584,7 +603,6 @@
             const shortCode = urlParams.get('s');
             
             if (shortCode) {
-                document.getElementById('sys-loading-text').innerText = 'กำลังพาคุณไปยังปลายทาง...';
                 try {
                     const q = query(collection(db, COLLECTION_NAME), where("shortCode", "==", shortCode));
                     const snapshot = await getDocs(q);
@@ -592,7 +610,19 @@
                     if (!snapshot.empty) {
                         const targetDoc = snapshot.docs[0];
                         const data = targetDoc.data();
+
+                        // 🔴 Check if paused
+                        if (data.status === 'paused') {
+                            document.getElementById('sys-loading-text').innerText = 'ลิงก์นี้ถูกระงับการใช้งานชั่วคราวโดยเจ้าของ';
+                            document.getElementById('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
+                            document.getElementById('sys-progress-bar').classList.add('hidden');
+                            document.querySelector('.animate-pulse').classList.replace('text-primary', 'text-red-500');
+                            document.querySelector('.animate-pulse').classList.remove('animate-pulse');
+                            return; // Stop execution
+                        }
                         
+                        document.getElementById('sys-loading-text').innerText = 'กำลังพาคุณไปยังปลายทาง...';
+
                         // Parse User-Agent for detailed tracking
                         const ua = navigator.userAgent;
                         let os = "อื่นๆ";
@@ -608,7 +638,7 @@
                         else if (ua.indexOf("Firefox") !== -1) browser = "Firefox";
                         else if (ua.indexOf("Edge") !== -1) browser = "Edge";
                         
-                        // 1. Log Detailed Scan (Try-Catch in case Firebase rules block anonymous write)
+                        // 1. Log Detailed Scan
                         try {
                             await addDoc(collection(db, "hovercode_analytics"), {
                                 qrId: targetDoc.id,
@@ -616,7 +646,7 @@
                                 os: os,
                                 browser: browser
                             });
-                        } catch(e) { console.log("Analytics detail log skipped due to rules"); }
+                        } catch(e) { console.log("Analytics detail log skipped"); }
 
                         // 2. Increment Overall Scan Count
                         await updateDoc(doc(db, COLLECTION_NAME, targetDoc.id), {
@@ -628,8 +658,9 @@
                         return;
                     } else {
                         document.getElementById('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง หรือถูกลบไปแล้ว';
-                        document.getElementById('sys-loading-text').classList.add('text-red-500');
-                        document.querySelector('.animate-pulse').classList.add('hidden');
+                        document.getElementById('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
+                        document.getElementById('sys-progress-bar').classList.add('hidden');
+                        document.querySelector('.animate-pulse').classList.remove('animate-pulse');
                         setTimeout(() => window.location.href = window.location.pathname, 3000);
                         return;
                     }
@@ -658,11 +689,12 @@
                 } else {
                     elLanding.classList.remove('hidden');
                     elApp.classList.add('hidden');
+                    // clean up real-time listener if logged out
+                    if(itemsUnsubscribe) { itemsUnsubscribe(); itemsUnsubscribe = null; }
                 }
             });
         }
 
-        // Generate Short Base62 ID (4 chars ~ 14.7 million combos)
         function generateShortCode(length = 4) {
             const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
             let result = '';
@@ -671,6 +703,7 @@
         }
 
         window.navTo = (viewId) => {
+            activeView = viewId;
             document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
             document.getElementById(`view-${viewId}`).classList.remove('hidden');
             
@@ -684,43 +717,48 @@
                 activeMenu.classList.add('bg-indigo-50', 'text-primary');
             }
 
-            if(viewId === 'list' || viewId === 'analytics' || viewId === 'admin') fetchDataAndRender(viewId);
+            if(viewId === 'list' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
             if(viewId === 'create') resetCreateForm();
         };
 
-        async function fetchDataAndRender(viewId) {
-            if(!currentUser) return;
+        // --- REAL-TIME SYNC ---
+        function subscribeToData(viewId) {
+            if (!currentUser) return;
+            if (itemsUnsubscribe) { itemsUnsubscribe(); itemsUnsubscribe = null; }
+
             if(viewId === 'list') {
                 document.getElementById('loading-list').classList.remove('hidden');
                 document.getElementById('empty-list').classList.add('hidden');
-                document.getElementById('qr-grid').innerHTML = '';
             }
 
-            try {
-                let q = (isAdmin && viewId === 'admin') 
-                    ? collection(db, COLLECTION_NAME) 
-                    : query(collection(db, COLLECTION_NAME), where("userId", "==", currentUser.uid));
-                
-                const snapshot = await getDocs(q);
+            let q = (isAdmin && viewId === 'admin') 
+                ? collection(db, COLLECTION_NAME) 
+                : query(collection(db, COLLECTION_NAME), where("userId", "==", currentUser.uid));
+            
+            itemsUnsubscribe = onSnapshot(q, (snapshot) => {
                 allItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allItems.sort((a, b) => b.createdAt - a.createdAt);
                 
-                if(viewId === 'list') renderQRList();
-                if(viewId === 'analytics') renderAnalytics();
-                if(viewId === 'admin' && isAdmin) renderAdminTable();
-            } catch (error) {
-                console.error(error);
-                showToast("โหลดข้อมูลล้มเหลว", "error");
-            } finally {
                 document.getElementById('loading-list').classList.add('hidden');
-            }
+                
+                if(activeView === 'list') renderQRList();
+                if(activeView === 'analytics') renderAnalytics();
+                if(activeView === 'admin' && isAdmin) renderAdminTable();
+            }, (error) => {
+                console.error(error);
+                showToast("การเชื่อมต่อข้อมูลแบบเรียลไทม์ขัดข้อง", "error");
+                document.getElementById('loading-list').classList.add('hidden');
+            });
         }
 
         function renderQRList() {
             const grid = document.getElementById('qr-grid');
             if (allItems.length === 0) {
                 document.getElementById('empty-list').classList.remove('hidden');
+                grid.innerHTML = '';
                 return;
+            } else {
+                document.getElementById('empty-list').classList.add('hidden');
             }
 
             grid.innerHTML = allItems.map(item => {
@@ -729,14 +767,20 @@
                 const shortLink = isStatic ? 'Static QR (ไม่มีลิงก์ย่อ)' : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
                 const renderData = isStatic ? item.destination : shortLink;
                 
+                const currentStatus = item.status || 'active';
+                const statusColor = currentStatus === 'active' ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50';
+                const statusIcon = currentStatus === 'active' ? 'fa-bolt' : 'fa-pause';
+                const statusText = currentStatus === 'active' ? 'Active' : 'Paused';
+
                 const fColor = (item.color || '#000000').replace('#', '');
                 const bgCol = (item.bgColor || '#ffffff').replace('#', '');
                 const thumbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(renderData)}&color=${fColor}&bgcolor=${bgCol}&margin=${item.margin || 2}&ecc=${item.ecc || 'M'}`;
 
                 return `
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col transition hover:shadow-md group">
-                    <div class="flex gap-4 items-start mb-2">
-                        <div class="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 p-1 shrink-0 overflow-hidden relative">
+                <div class="bg-white rounded-2xl shadow-sm border ${currentStatus === 'paused' ? 'border-amber-200' : 'border-gray-100'} p-5 flex flex-col transition hover:shadow-md group relative">
+                    ${currentStatus === 'paused' ? `<div class="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg rounded-tr-xl"><i class="fa-solid fa-lock"></i> ระงับการใช้งาน</div>` : ''}
+                    <div class="flex gap-4 items-start mb-2 mt-1">
+                        <div class="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 p-1 shrink-0 overflow-hidden relative ${currentStatus === 'paused' ? 'opacity-50' : ''}">
                             <img src="${thumbUrl}" class="w-full h-full object-contain" alt="QR">
                             <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer" onclick="openDownloadModal('${item.id}')">
                                 <i class="fa-solid fa-download text-white text-xl"></i>
@@ -744,12 +788,11 @@
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start">
-                                <h3 class="font-bold text-gray-900 truncate pr-2 text-lg">${item.name}</h3>
-                                ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="text-gray-400 hover:text-primary transition p-1 bg-gray-50 rounded" title="แก้ไขปลายทาง"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
+                                <h3 class="font-bold text-gray-900 truncate pr-2 text-lg ${currentStatus === 'paused' ? 'text-gray-400' : ''}">${item.name}</h3>
                             </div>
                             <div class="flex items-center gap-2 mt-1 mb-2">
-                                <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded flex items-center gap-1"><i class="fa-solid ${typeIcon}"></i> ${item.type.toUpperCase()}</span>
-                                ${!isStatic ? `<span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"><i class="fa-solid fa-bolt"></i> Dynamic</span>` : ''}
+                                <span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded flex items-center gap-1 font-semibold uppercase tracking-wider"><i class="fa-solid ${typeIcon}"></i> ${item.type}</span>
+                                ${!isStatic ? `<span class="text-[10px] font-semibold ${statusColor} px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1"><i class="fa-solid ${statusIcon}"></i> ${statusText}</span>` : ''}
                             </div>
                             <div class="text-xs text-gray-500 font-medium flex items-center gap-1">
                                 ยอดสแกน: <button onclick="openScanDetails('${item.id}')" class="text-primary hover:underline font-bold px-1">${item.scans || 0}</button> ครั้ง
@@ -760,16 +803,26 @@
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 mt-auto flex items-center justify-between gap-2 shadow-inner">
                         <div class="flex-1 min-w-0 flex items-center gap-2 px-2 overflow-hidden">
                             <i class="fa-solid ${isStatic ? 'fa-align-left' : 'fa-link'} text-gray-400"></i>
-                            <p class="text-sm text-gray-700 font-mono truncate select-all">${isStatic ? item.destination : shortLink}</p>
+                            <p class="text-sm text-gray-700 font-mono truncate select-all ${currentStatus === 'paused' ? 'line-through text-gray-400' : ''}">${isStatic ? item.destination : shortLink}</p>
                         </div>
                         <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="shrink-0 w-9 h-9 flex items-center justify-center text-primary bg-indigo-100 hover:bg-primary hover:text-white rounded-md transition shadow-sm" title="คัดลอกลิงก์">
                             <i class="fa-regular fa-copy text-lg"></i>
                         </button>
                     </div>
                     
-                    <div class="flex justify-end pt-3 mt-3 border-t border-gray-100">
-                        <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition px-3 py-1 flex items-center gap-1">
-                            <i class="fa-solid fa-trash-can"></i> ลบข้อมูล
+                    <div class="flex justify-between items-center pt-3 mt-3 border-t border-gray-100">
+                        <div class="flex gap-2">
+                            ${!isStatic ? `
+                                <button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="text-xs font-medium text-gray-600 hover:text-primary hover:bg-indigo-50 rounded-lg transition px-2 py-1 flex items-center gap-1">
+                                    <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                                </button>
+                                <button onclick="toggleQRStatus('${item.id}', '${currentStatus}')" class="text-xs font-medium ${currentStatus === 'paused' ? 'text-green-600 hover:bg-green-50' : 'text-amber-600 hover:bg-amber-50'} rounded-lg transition px-2 py-1 flex items-center gap-1">
+                                    <i class="fa-solid ${currentStatus === 'paused' ? 'fa-play' : 'fa-pause'}"></i> ${currentStatus === 'paused' ? 'เปิดใช้งาน' : 'ระงับลิงก์'}
+                                </button>
+                            ` : '<div></div>'}
+                        </div>
+                        <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition px-2 py-1 flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> ลบ
                         </button>
                     </div>
                 </div>
@@ -777,8 +830,19 @@
             }).join('');
         }
 
-        // --- View Scan Details (Detailed Analytics) ---
-        window.openScanDetails = async (id) => {
+        // --- Toggle Status ---
+        window.toggleQRStatus = async (id, currentStatus) => {
+            const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+            try {
+                await updateDoc(doc(db, COLLECTION_NAME, id), { status: newStatus });
+                showToast(`อัปเดตสถานะเป็น ${newStatus === 'active' ? 'ใช้งานปกติ' : 'ระงับชั่วคราว'} สำเร็จ`);
+            } catch(e) {
+                showToast("ไม่สามารถอัปเดตสถานะได้", "error");
+            }
+        };
+
+        // --- View Scan Details (Real-time Analytics) ---
+        window.openScanDetails = (id) => {
             const item = allItems.find(i => i.id === id);
             if(!item) return;
 
@@ -788,29 +852,36 @@
             document.getElementById('scan-details-loading').classList.remove('hidden');
             document.getElementById('scan-details-body').innerHTML = '';
 
-            try {
-                const q = query(collection(db, 'hovercode_analytics'), where("qrId", "==", id));
-                const snapshot = await getDocs(q);
+            if (scanDetailsUnsubscribe) scanDetailsUnsubscribe();
+
+            const q = query(collection(db, 'hovercode_analytics'), where("qrId", "==", id));
+            scanDetailsUnsubscribe = onSnapshot(q, (snapshot) => {
                 let logs = snapshot.docs.map(d => d.data());
                 logs.sort((a,b) => b.timestamp - a.timestamp); // sort by newest
 
+                document.getElementById('scan-details-loading').classList.add('hidden');
+
                 if(logs.length === 0) {
-                     document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">ไม่พบประวัติการสแกนแบบละเอียดในระบบ (อาจเป็นสถิติเก่า)</td></tr>`;
+                     document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">ไม่พบประวัติการสแกนแบบละเอียดในระบบ</td></tr>`;
                 } else {
                      document.getElementById('scan-details-body').innerHTML = logs.map(l => `
-                        <tr class="border-b border-gray-50 hover:bg-gray-50">
+                        <tr class="border-b border-gray-50 hover:bg-gray-50 fade-in">
                             <td class="p-3 text-sm text-gray-700">${new Date(l.timestamp).toLocaleString('th-TH')}</td>
                             <td class="p-3 text-sm text-gray-700 font-medium">${getOSIconHTML(l.os)} ${l.os || 'ไม่ระบุ'}</td>
                             <td class="p-3 text-sm text-gray-700">${getBrowserIconHTML(l.browser)} ${l.browser || 'ไม่ระบุ'}</td>
                         </tr>
                      `).join('');
                 }
-            } catch(e) {
-                console.error(e);
-                document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">ไม่สามารถโหลดข้อมูลได้ (กรุณาตรวจสอบ Firestore Rules ให้รองรับการอ่าน Collection 'hovercode_analytics')</td></tr>`;
-            } finally {
+            }, (error) => {
+                console.error(error);
                 document.getElementById('scan-details-loading').classList.add('hidden');
-            }
+                document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">ไม่สามารถโหลดข้อมูลแบบ Real-time ได้</td></tr>`;
+            });
+        };
+
+        window.closeScanDetails = () => {
+            if (scanDetailsUnsubscribe) { scanDetailsUnsubscribe(); scanDetailsUnsubscribe = null; }
+            document.getElementById('scan-details-modal').classList.add('hidden');
         };
 
         function getOSIconHTML(os) {
@@ -916,7 +987,7 @@
             document.getElementById('analytics-table').innerHTML = sortedByScans.map(item => `
                 <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
                     <td class="p-4 font-medium text-gray-800 truncate max-w-[200px]">${item.name}</td>
-                    <td class="p-4"><span class="text-xs font-medium bg-gray-100 px-2 py-1 rounded text-gray-600">${item.type.toUpperCase()}</span></td>
+                    <td class="p-4"><span class="text-xs font-medium ${item.status === 'paused' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'} px-2 py-1 rounded"><i class="fa-solid ${item.status === 'paused' ? 'fa-pause' : 'fa-bolt'}"></i> ${item.status === 'paused' ? 'Paused' : 'Active'}</span></td>
                     <td class="p-4 text-right font-bold text-primary">${item.scans || 0}</td>
                     <td class="p-4 text-center text-gray-500 text-xs">${new Date(item.createdAt).toLocaleDateString('th-TH')}</td>
                 </tr>
@@ -928,7 +999,7 @@
                 <tr class="border-b border-gray-50 hover:bg-gray-50">
                     <td class="p-4"><span class="text-xs bg-gray-100 px-2 py-1 rounded font-medium">${item.type.toUpperCase()}</span></td>
                     <td class="p-4 font-medium truncate max-w-[150px]">${item.name}</td>
-                    <td class="p-4 text-xs text-gray-500">${item.userEmail}</td>
+                    <td class="p-4"><span class="text-xs font-medium ${item.status === 'paused' ? 'text-amber-600' : 'text-green-600'}">${item.status === 'paused' ? 'ระงับ' : 'ปกติ'}</span></td>
                     <td class="p-4 font-bold text-primary">${item.scans || 0}</td>
                     <td class="p-4 text-center">
                         <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition"><i class="fa-solid fa-trash-can"></i></button>
@@ -1102,6 +1173,7 @@
                     bgColor: currentQRBgColor,
                     margin: currentQRMargin,
                     ecc: currentQRECLevel,
+                    status: 'active', // Set active by default
                     scans: 0,
                     storagePath: storagePath,
                     createdAt: Date.now()
@@ -1145,7 +1217,7 @@
                 await updateDoc(doc(db, COLLECTION_NAME, id), { destination: newUrl, name: newName });
                 showToast("อัปเดตข้อมูลสำเร็จ! ผู้สแกนจะไปที่ลิงก์ใหม่ทันที");
                 closeEditModal();
-                fetchDataAndRender('list');
+                // no need to fetch manually, real-time listener will update the list automatically
             } catch (error) {
                 showToast("เกิดข้อผิดพลาด: " + error.message, "error");
             } finally {
@@ -1159,7 +1231,6 @@
                 if (storagePath) await deleteObject(ref(storage, storagePath)).catch(e => console.log("Storage skip", e));
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
                 showToast("ลบข้อมูลสำเร็จ!");
-                fetchDataAndRender(isAdmin && document.getElementById('view-admin').classList.contains('hidden') === false ? 'admin' : 'list');
             } catch (error) {
                 showToast("ลบล้มเหลว", "error");
             }
