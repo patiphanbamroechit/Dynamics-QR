@@ -515,6 +515,7 @@
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -532,6 +533,7 @@
         const auth = getAuth(app);
         const googleProvider = new GoogleAuthProvider();
         const db = getFirestore(app);
+        const storage = getStorage(app);
         window.jspdf = window.jspdf || {};
 
         const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
@@ -764,7 +766,7 @@
                                 <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="คัดลอกลิงก์"><i class="fa-regular fa-copy"></i></button>
                                 ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                                 ${!isStatic ? `<button onclick="toggleQRStatus('${item.id}', '${currentStatus}')" class="w-8 h-8 flex items-center justify-center text-gray-500 ${isPaused ? 'hover:text-green-500 hover:bg-green-50' : 'hover:text-amber-500 hover:bg-amber-50'} rounded-lg transition" title="${isPaused ? 'เปิดใช้งาน' : 'ระงับชั่วคราว'}"><i class="fa-solid ${isPaused ? 'fa-play' : 'fa-pause'}"></i></button>` : ''}
-                                <button onclick="deleteQR('${item.id}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบถาวร"><i class="fa-solid fa-trash-can"></i></button>
+                                <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบถาวร"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                         </div>
                     </div>
@@ -826,6 +828,7 @@
             const statusText = safeEl('quick-progress-status-text');
             
             let finalDestination = "";
+            let storagePath = null;
             let inputData = "";
 
             // Validate Input
@@ -860,14 +863,14 @@
                     const bar = safeEl('quick-progress-bar');
                     const txt = safeEl('quick-progress-text');
                     if(progressWrap) progressWrap.classList.remove('hidden');
-                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ (UploadCare API)...';
+                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ผ่าน UploadCare...';
                     if(bar) bar.style.width = '0%';
                     if(txt) txt.innerText = '0%';
 
                     // 🔴 USING UPLOADCARE INSTEAD OF FIREBASE STORAGE 🔴
                     finalDestination = await new Promise((resolve, reject) => {
                         const formData = new FormData();
-                        formData.append('UPLOADCARE_PUB_KEY', '42018535c1fd5a850bf1'); // ใช้ Public Key ของคุณ
+                        formData.append('UPLOADCARE_PUB_KEY', '42018535c1fd5a850bf1'); // Public Key ของคุณ
                         formData.append('file', quickFileObj);
 
                         const xhr = new XMLHttpRequest();
@@ -893,6 +896,8 @@
                         xhr.onerror = () => reject(new Error('เกิดข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต'));
                         xhr.send(formData);
                     });
+                    
+                    storagePath = null; // ไม่ได้ใช้ Firebase Storage แล้ว
                 }
 
                 const shortCode = (quickType !== 'text') ? generateShortCode(4) : null;
@@ -901,7 +906,7 @@
                     userId: currentUser.uid, userEmail: currentUser.email,
                     type: quickType, name: name, destination: finalDestination,
                     shortCode: shortCode, color: quickColor, bgColor: '#ffffff', margin: 2, ecc: 'M',
-                    status: 'active', scans: 0, createdAt: Date.now()
+                    status: 'active', scans: 0, storagePath: storagePath, createdAt: Date.now()
                 });
                 
                 showToast("สร้าง Dynamic QR สำเร็จ!");
@@ -973,9 +978,10 @@
             });
         }
 
-        window.deleteQR = async (id) => {
+        window.deleteQR = async (id, storagePath) => {
             if(!confirm("ลบ QR Code นี้อย่างถาวร? ลิงก์จะไม่สามารถใช้การได้อีก")) return;
             try {
+                if (storagePath) await deleteObject(ref(storage, storagePath)).catch(e=>{});
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
                 showToast("ลบข้อมูลสำเร็จ");
             } catch (error) { showToast("ลบล้มเหลว", "error"); }
@@ -1121,7 +1127,7 @@
                         <td class="p-5 text-sm font-medium text-primary">${item.userEmail}</td>
                         <td class="p-5 font-black text-gray-900">${item.scans || 0}</td>
                         <td class="p-5 text-center">
-                            <button onclick="deleteQR('${item.id}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
                         </td>
                     </tr>
                 `).join('');
