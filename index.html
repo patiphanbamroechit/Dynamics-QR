@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic QR Generator</title>
+    <title>NexusQR - Dynamic Generator</title>
+    <!-- Favicon (Website Icon) -->
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/7782/7782672.png" type="image/png">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -19,7 +22,13 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { primary: '#4f46e5', secondary: '#4338ca', dark: '#1e293b', lightbg: '#f4f7fb' },
+                    colors: { 
+                        primary: '#8b5cf6', // Violet 500
+                        secondary: '#a855f7', // Fuchsia 500
+                        dark: '#0f172a', // Slate 900
+                        sidebar: '#1e1b4b', // Deep purple dark
+                        lightbg: '#f8fafc' 
+                    },
                     fontFamily: { sans: ['Prompt', 'sans-serif'] }
                 }
             }
@@ -28,8 +37,8 @@
     <style>
         body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; color: #334155; }
         .hidden { display: none !important; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -37,397 +46,394 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        .qr-overlay-btn { transform: translateY(10px); opacity: 0; transition: all 0.2s ease-out; }
-        .group:hover .qr-overlay-btn { transform: translateY(0); opacity: 1; }
+        /* Modern Card Hover */
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .qr-overlay-btn { transform: scale(0.9); opacity: 0; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .group:hover .qr-overlay-btn { transform: scale(1); opacity: 1; }
+        
+        /* Gradient Text */
+        .text-gradient { background: linear-gradient(to right, #8b5cf6, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
-<body class="antialiased flex flex-col min-h-screen">
+<body class="antialiased flex flex-col min-h-screen overflow-hidden">
 
     <!-- System Loading & Redirect Screen -->
     <div id="sys-loading" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
-        <i class="fa-solid fa-qrcode text-6xl text-primary mb-6 animate-pulse"></i>
-        <div id="sys-loading-text" class="text-lg font-medium text-gray-600">กำลังโหลดข้อมูล...</div>
-        <div id="sys-progress-bar" class="mt-4 w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
-            <div class="h-full bg-primary rounded-full animate-[progress_1.5s_ease-in-out_infinite]" style="width: 50%;"></div>
+        <div class="relative w-24 h-24 mb-6">
+            <div class="absolute inset-0 rounded-full border-4 border-gray-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+            <i class="fa-solid fa-qrcode text-3xl text-primary absolute inset-0 flex items-center justify-center animate-pulse"></i>
         </div>
+        <div id="sys-loading-text" class="text-lg font-medium text-gray-700">กำลังเชื่อมต่อข้อมูล...</div>
     </div>
-    <style>@keyframes progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }</style>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-4 right-4 transform translate-x-[120%] transition-transform duration-300 z-[90] px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-white bg-dark">
+    <div id="toast" class="fixed top-4 right-4 transform translate-x-[120%] transition-transform duration-300 z-[90] px-5 py-3.5 rounded-xl shadow-xl flex items-center gap-3 text-white bg-dark border border-gray-700">
         <i id="toast-icon" class="fa-solid fa-circle-check text-xl text-green-400"></i>
         <span id="toast-message" class="font-medium text-sm">แจ้งเตือน</span>
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl p-8 max-w-md w-full relative shadow-2xl transform scale-95 transition-transform duration-300" id="login-modal-content">
-            <button onclick="toggleLoginModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition">
+    <div id="login-modal" class="hidden fixed inset-0 bg-dark/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full relative shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden" id="login-modal-content">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary"></div>
+            <button onclick="toggleLoginModal(false)" class="absolute top-5 right-5 text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="w-14 h-14 bg-indigo-50 text-primary rounded-xl flex items-center justify-center mx-auto mb-5">
-                <i class="fa-solid fa-qrcode text-2xl"></i>
+            <div class="w-16 h-16 bg-gradient-to-br from-primary to-secondary text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
+                <i class="fa-solid fa-qrcode text-3xl"></i>
             </div>
-            <h2 class="text-center text-2xl font-bold text-gray-900 mb-2">เข้าสู่ระบบ</h2>
-            <p class="text-center text-sm text-gray-500 mb-6">เริ่มสร้างและจัดการ QR Code ของคุณ</p>
-            <button id="btn-google-login" class="w-full flex justify-center items-center gap-3 py-3 px-4 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition focus:ring-4 focus:ring-indigo-100">
+            <h2 class="text-center text-2xl font-extrabold text-gray-900 mb-2">NexusQR</h2>
+            <p class="text-center text-sm text-gray-500 mb-8">เข้าสู่ระบบเพื่อจัดการ Dynamic QR ของคุณ</p>
+            <button id="btn-google-login" class="w-full flex justify-center items-center gap-3 py-3.5 px-4 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-indigo-50 font-bold text-gray-700 transition focus:ring-4 focus:ring-primary/20">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
                 <span>ล็อกอินด้วย Google</span>
-                <i id="login-spinner" class="fa-solid fa-circle-notch fa-spin hidden ml-2"></i>
+                <i id="login-spinner" class="fa-solid fa-circle-notch fa-spin hidden ml-2 text-primary"></i>
             </button>
-        </div>
-    </div>
-
-    <!-- Edit QR Modal -->
-    <div id="edit-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full relative shadow-xl fade-in">
-            <button onclick="closeEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-primary"></i> แก้ไขปลายทาง</h2>
-            <p class="text-sm text-gray-500 mb-6">ผู้ใช้ที่สแกน QR Code เดิมจะถูกเปลี่ยนเส้นทางมายังลิงก์ใหม่นี้ทันที</p>
-            
-            <form id="form-edit-qr" class="space-y-4">
-                <input type="hidden" id="edit-qr-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ QR Code</label>
-                    <input type="text" id="edit-qr-name" required class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ลิงก์ปลายทางใหม่ (URL)</label>
-                    <input type="url" id="edit-qr-url" required class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
-                </div>
-                <div class="pt-4 flex gap-3">
-                    <button type="button" onclick="closeEditModal()" class="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition">ยกเลิก</button>
-                    <button type="submit" id="btn-save-edit" class="flex-1 py-2.5 px-4 bg-primary text-white rounded-lg hover:bg-secondary font-medium transition flex justify-center items-center gap-2">
-                        บันทึกการแก้ไข <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Download Options Modal -->
-    <div id="download-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full relative shadow-xl fade-in text-center">
-            <button onclick="closeDownloadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <h2 class="text-xl font-bold text-gray-900 mb-2">ดาวน์โหลด QR Code</h2>
-            <p id="dl-qr-name" class="text-sm text-gray-500 mb-6 truncate font-medium">ชื่อคิวอาร์โค้ด</p>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="processDownload('png')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
-                    <i class="fa-regular fa-image text-2xl text-gray-500 group-hover:text-primary transition"></i>
-                    <span class="font-bold text-gray-700 text-sm">PNG</span>
-                </button>
-                <button onclick="processDownload('jpeg')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
-                    <i class="fa-solid fa-image text-2xl text-gray-500 group-hover:text-primary transition"></i>
-                    <span class="font-bold text-gray-700 text-sm">JPG</span>
-                </button>
-                <button onclick="processDownload('svg')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
-                    <i class="fa-solid fa-bezier-curve text-2xl text-gray-500 group-hover:text-primary transition"></i>
-                    <span class="font-bold text-gray-700 text-sm">SVG (Vector)</span>
-                </button>
-                <button onclick="processDownload('pdf')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
-                    <i class="fa-solid fa-file-pdf text-2xl text-gray-500 group-hover:text-primary transition"></i>
-                    <span class="font-bold text-gray-700 text-sm">PDF Document</span>
-                </button>
-            </div>
-            <p class="text-xs text-gray-400 mt-4 text-left"><i class="fa-solid fa-circle-info"></i> แนะนำ: ใช้ <b>SVG</b> หากต้องการนำไปขยายใหญ่ติดป้ายโฆษณาภาพจะไม่แตก</p>
-        </div>
-    </div>
-
-    <!-- Scan Details Modal -->
-    <div id="scan-details-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-2xl relative shadow-xl fade-in flex flex-col max-h-[80vh]">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
-                <div>
-                    <h2 id="scan-details-title" class="text-xl font-bold text-gray-900 truncate">รายละเอียดการสแกน</h2>
-                    <p class="text-xs text-green-600 mt-1 font-medium flex items-center gap-1"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i> อัปเดตแบบเรียลไทม์</p>
-                </div>
-                <button onclick="closeScanDetails()" class="text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto flex-1 bg-gray-50/50">
-                <div id="scan-details-loading" class="flex justify-center py-8">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-gray-300"></i>
-                </div>
-                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                                <th class="p-3 font-semibold">วัน-เวลา ที่เข้าชม</th>
-                                <th class="p-3 font-semibold">ระบบปฏิบัติการ (OS)</th>
-                                <th class="p-3 font-semibold">เบราว์เซอร์</th>
-                            </tr>
-                        </thead>
-                        <tbody id="scan-details-body" class="text-sm">
-                            <!-- Injected via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     </div>
 
     <!-- ================= PUBLIC LANDING PAGE ================= -->
-    <div id="page-landing" class="hidden flex-1 flex flex-col bg-white">
-        <nav class="border-b border-gray-100 px-6 py-4 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur z-40">
-            <div class="flex items-center gap-2 text-primary font-bold text-2xl">
-                <i class="fa-solid fa-qrcode"></i> <span>DynamicQR</span>
+    <div id="page-landing" class="hidden flex-1 flex flex-col bg-lightbg overflow-y-auto">
+        <nav class="px-6 py-5 flex justify-between items-center max-w-6xl mx-auto w-full z-40 relative">
+            <div class="flex items-center gap-2 text-gray-900 font-extrabold text-2xl">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center text-sm"><i class="fa-solid fa-qrcode"></i></div>
+                <span>Nexus<span class="text-primary">QR</span></span>
             </div>
-            <button onclick="toggleLoginModal(true)" class="bg-dark text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition shadow-sm">
+            <button onclick="toggleLoginModal(true)" class="bg-dark text-white px-6 py-2.5 rounded-full font-medium hover:bg-gray-800 transition shadow-lg">
                 เข้าสู่ระบบ
             </button>
         </nav>
 
-        <main class="flex-1 flex flex-col items-center pt-20 pb-16 px-6 text-center max-w-5xl mx-auto w-full">
-            <div class="inline-block px-4 py-1 bg-indigo-50 text-primary font-semibold rounded-full text-xs mb-6 border border-indigo-100">
-                🚀 แพลตฟอร์มสร้าง QR Code ระดับองค์กร
+        <main class="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-5xl mx-auto w-full relative pb-20">
+            <!-- Decorative Blobs -->
+            <div class="absolute top-0 left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl -z-10"></div>
+            <div class="absolute bottom-10 right-10 w-80 h-80 bg-secondary/20 rounded-full blur-3xl -z-10"></div>
+
+            <div class="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-sm font-semibold text-gray-700 shadow-sm border border-gray-200 mb-8">
+                <span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span>
+                ระบบ Real-time Sync & Dynamic Links
             </div>
-            <h1 class="text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight leading-tight">
-                สร้าง <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-600">Dynamic QR</span><br>ที่เปลี่ยนใจได้เสมอ
+            <h1 class="text-5xl md:text-7xl font-black text-slate-900 mb-6 tracking-tight leading-tight">
+                ควบคุม QR Code<br>ด้วยปลายนิ้ว <span class="text-gradient">ที่เดียวจบ</span>
             </h1>
-            <p class="text-lg text-gray-500 mb-10 max-w-2xl mx-auto">
-                ไม่ต้องพิมพ์ QR Code ใหม่เมื่อเปลี่ยนข้อมูล แก้ไขลิงก์ปลายทางได้ตลอดเวลา พร้อมระบบอัปเดตยอดสแกนแบบ Real-time
+            <p class="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+                สร้าง, จัดการ, และแก้ไขลิงก์ปลายทางของ QR Code ได้ทุกเมื่อโดยไม่ต้องสั่งพิมพ์ใหม่ พร้อมสถิติยอดสแกนแบบวินาทีต่อวินาที
             </p>
-            <button onclick="toggleLoginModal(true)" class="bg-primary text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-secondary transition shadow-lg shadow-indigo-200 flex items-center gap-2">
-                เริ่มต้นสร้าง QR ฟรี
+            <button onclick="toggleLoginModal(true)" class="bg-gradient-to-r from-primary to-secondary text-white px-10 py-4 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center gap-2">
+                เริ่มต้นใช้งานฟรี <i class="fa-solid fa-arrow-right"></i>
             </button>
         </main>
     </div>
 
-    <!-- ================= LOGGED IN APP (HOVERCODE STYLE) ================= -->
-    <div id="page-app" class="hidden flex-1 flex flex-col bg-[#f8fafc]">
+    <!-- ================= LOGGED IN APP (NEXUS THEME) ================= -->
+    <div id="page-app" class="hidden flex-1 flex h-screen bg-[#f1f5f9]">
         
-        <!-- Top Navbar (Hovercode Style) -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-            <!-- Top blue banner (optional promo) -->
-            <div class="bg-blue-500 text-white text-xs py-1.5 text-center font-medium px-4">
-                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> โค้ดนี้ปรับแต่งพิเศษในสไตล์ Minimal & Clean เพื่อการใช้งานที่ง่ายที่สุด
-            </div>
-            <div class="px-6 h-16 flex items-center justify-between max-w-[1400px] mx-auto w-full">
-                <!-- Left: Logo & Main Nav -->
-                <div class="flex items-center gap-8">
-                    <div class="flex items-center gap-2 text-primary font-bold text-xl cursor-pointer" onclick="navTo('dashboard')">
-                        <div class="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-qrcode"></i></div>
-                        <span class="text-gray-800">DynamicQR</span>
-                    </div>
+        <!-- Modern Sidebar -->
+        <aside class="w-64 bg-sidebar text-gray-300 flex-col hidden md:flex shrink-0 shadow-xl z-20 relative">
+            <div class="h-20 flex items-center px-6 border-b border-white/10">
+                <div class="flex items-center gap-3 text-white font-extrabold text-2xl cursor-pointer" onclick="navTo('dashboard')">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-sm shadow-lg"><i class="fa-solid fa-qrcode"></i></div>
+                    <span>Nexus<span class="text-primary font-light">QR</span></span>
                 </div>
+            </div>
 
-                <!-- Right: Analytics & Settings -->
-                <div class="flex items-center gap-4 text-sm font-medium">
-                    <button onclick="navTo('dashboard')" id="nav-dashboard" class="top-nav-btn text-gray-600 hover:text-gray-900 transition flex items-center gap-2 py-2"><i class="fa-solid fa-layer-group"></i> รหัส QR</button>
-                    <button onclick="navTo('analytics')" id="nav-analytics" class="top-nav-btn text-gray-600 hover:text-gray-900 transition flex items-center gap-2 py-2"><i class="fa-solid fa-chart-simple"></i> การวิเคราะห์</button>
-                    <button onclick="navTo('admin')" id="nav-admin" class="top-nav-btn hidden text-red-600 hover:text-red-700 transition flex items-center gap-2 py-2"><i class="fa-solid fa-shield-halved"></i> แอดมิน</button>
-                    
-                    <div class="h-6 w-px bg-gray-200 mx-2"></div>
-                    
-                    <!-- Profile Menu Simple -->
-                    <div class="relative group cursor-pointer">
-                        <div class="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-                            <i class="fa-solid fa-circle-user text-lg"></i> <span id="user-email-text" class="hidden md:inline">user@email.com</span> <i class="fa-solid fa-chevron-down text-xs"></i>
-                        </div>
-                        <div class="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                            <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-gray-50 rounded-lg"><i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> ออกจากระบบ</button>
-                        </div>
-                    </div>
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-3">Workspace</p>
+                <button onclick="navTo('dashboard')" id="nav-dashboard" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-white bg-white/10 hover:bg-white/20">
+                    <i class="fa-solid fa-border-all w-5 text-center"></i> จัดการคิวอาร์
+                </button>
+                <button onclick="navTo('analytics')" id="nav-analytics" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-white/5">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i> ภาพรวมสถิติ
+                </button>
+                
+                <div id="admin-menu-section" class="hidden pt-6">
+                    <p class="text-[10px] font-bold text-red-400 uppercase tracking-widest px-3 mb-3">Admin Panel</p>
+                    <button onclick="navTo('admin')" id="nav-admin" class="sidebar-menu w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-500/20 transition">
+                        <i class="fa-solid fa-shield-halved w-5 text-center"></i> ผู้ดูแลระบบ
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Bottom Live Indicator -->
+            <div class="p-4 bg-black/20 m-4 rounded-xl border border-white/5 flex items-center gap-3">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-white truncate">เชื่อมต่อระบบแล้ว</p>
+                    <p class="text-[10px] text-gray-400">Real-time Sync Active</p>
                 </div>
             </div>
-        </header>
+        </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto px-4 py-8">
-            
-            <!-- VIEW: DASHBOARD (Create + List combined like Hovercode) -->
-            <div id="view-dashboard" class="app-view max-w-[1200px] mx-auto fade-in">
+        <div class="flex-1 flex flex-col min-w-0">
+            <!-- Top Header Navbar -->
+            <header class="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 z-10">
+                <!-- Mobile Toggle -->
+                <div class="md:hidden flex items-center gap-3">
+                    <button id="btn-mobile-menu" class="text-gray-600 hover:text-primary text-2xl transition"><i class="fa-solid fa-bars"></i></button>
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center"><i class="fa-solid fa-qrcode"></i></div>
+                </div>
                 
-                <!-- Quick Create Box -->
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-10 overflow-hidden">
-                    <div class="bg-gray-50 px-2 flex gap-1 text-sm font-medium border-b border-gray-200">
-                        <button onclick="selectQuickType('url')" id="qt-url" class="px-4 py-3 border-b-2 border-primary text-gray-900 flex items-center gap-2"><i class="fa-solid fa-link text-gray-400"></i> ลิงก์</button>
-                        <button onclick="selectQuickType('pdf')" id="qt-pdf" class="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-900 transition flex items-center gap-2"><i class="fa-regular fa-file-pdf text-gray-400"></i> พีดีเอฟ</button>
-                        <button onclick="selectQuickType('text')" id="qt-text" class="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-900 transition flex items-center gap-2"><i class="fa-solid fa-font text-gray-400"></i> ข้อความ</button>
+                <div class="hidden md:block">
+                    <h2 id="header-title" class="text-xl font-bold text-gray-800">แผงควบคุม (Dashboard)</h2>
+                </div>
+
+                <!-- Right Profile Menu -->
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-primary rounded-full text-xs font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition">
+                        <i class="fa-solid fa-crown text-amber-500"></i> อัปเกรดเป็น Pro
                     </div>
                     
-                    <div class="p-6">
-                        <p class="text-sm font-bold text-gray-700 mb-3" id="quick-title">เพิ่มลิงก์เพื่อสร้างรหัส QR</p>
+                    <!-- Advanced Profile Dropdown -->
+                    <div class="relative group">
+                        <button class="flex items-center gap-3 p-1.5 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200">
+                            <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold"><i class="fa-regular fa-user"></i></div>
+                            <div class="hidden md:block text-left mr-2">
+                                <p id="user-email-text" class="text-sm font-bold text-gray-700 leading-none">user@email.com</p>
+                                <p class="text-[10px] text-gray-500 mt-0.5">Free Plan</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-down text-xs text-gray-400 hidden md:block mr-2"></i>
+                        </button>
                         
-                        <!-- Inputs -->
-                        <div class="flex flex-col md:flex-row gap-3">
-                            <div class="flex-1">
-                                <!-- URL -->
-                                <input type="url" id="quick-url" placeholder="https://example.com" class="quick-input w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-primary transition text-gray-800">
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 transform origin-top-right">
+                            <div class="p-4 border-b border-gray-50 bg-gray-50/50 rounded-t-2xl">
+                                <p class="text-xs text-gray-500 font-medium mb-1">บัญชีของคุณ</p>
+                                <p class="text-sm font-bold text-gray-800 truncate" id="drop-email">email@domain.com</p>
+                            </div>
+                            <div class="p-2 py-3 text-sm text-gray-600 font-medium space-y-1">
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-user-pen w-4 text-center"></i> จัดการโปรไฟล์</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-credit-card w-4 text-center"></i> แผนและแพ็กเกจ (Billing)</a>
+                                <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition">
+                                    <div class="flex items-center gap-3"><i class="fa-solid fa-globe w-4 text-center"></i> โดเมนของฉัน</div>
+                                    <span class="bg-primary/10 text-primary text-[9px] px-2 py-0.5 rounded font-bold">PRO</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50 hover:text-primary transition"><i class="fa-solid fa-users w-4 text-center"></i> จัดการทีม (Team)</a>
+                            </div>
+                            <div class="p-2 border-t border-gray-50 text-sm text-gray-600 font-medium space-y-1">
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-solid fa-code w-4 text-center"></i> ตั้งค่า API & Webhooks</a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"><i class="fa-regular fa-circle-question w-4 text-center"></i> ศูนย์ช่วยเหลือ (Support)</a>
+                            </div>
+                            <div class="p-2 border-t border-gray-50">
+                                <button id="btn-logout" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i> ออกจากระบบ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Workspace -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8">
+                
+                <!-- VIEW: DASHBOARD (Create + List) -->
+                <div id="view-dashboard" class="app-view max-w-[1200px] mx-auto fade-in">
+                    
+                    <!-- Neo-Card Quick Create Box -->
+                    <div class="glass-card rounded-3xl shadow-sm mb-10 overflow-hidden border border-gray-200">
+                        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 flex items-center gap-2 border-b border-gray-100">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+                            <h3 class="font-bold text-gray-800">สร้าง Dynamic QR ด่วน</h3>
+                        </div>
+                        
+                        <div class="p-6 md:p-8">
+                            <!-- Type Toggles Pill Style -->
+                            <div class="flex flex-wrap gap-2 mb-6 bg-gray-50 p-1.5 rounded-xl inline-flex border border-gray-200">
+                                <button onclick="selectQuickType('url')" id="qt-url" class="px-6 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-2 transition"><i class="fa-solid fa-link"></i> ลิงก์เว็บไซต์</button>
+                                <button onclick="selectQuickType('pdf')" id="qt-pdf" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-regular fa-file-pdf"></i> ไฟล์ PDF</button>
+                                <button onclick="selectQuickType('text')" id="qt-text" class="px-6 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 transition flex items-center gap-2"><i class="fa-solid fa-font"></i> ข้อความ</button>
+                            </div>
+                            
+                            <!-- Inputs -->
+                            <div class="flex flex-col lg:flex-row gap-4 items-start">
+                                <div class="flex-1 w-full relative">
+                                    <!-- URL -->
+                                    <div id="quick-url-wrap" class="relative">
+                                        <i class="fa-solid fa-earth-americas absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="url" id="quick-url" placeholder="วางลิงก์ปลายทางที่นี่ (เช่น https://example.com)" class="quick-input w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium">
+                                    </div>
+                                    
+                                    <!-- Text -->
+                                    <div id="quick-text-wrap" class="hidden relative">
+                                        <textarea id="quick-text" placeholder="พิมพ์ข้อความที่จะแสดง (ไม่สามารถติดตามการสแกนได้)" rows="2" class="quick-input w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:bg-white transition text-gray-800 font-medium resize-none"></textarea>
+                                    </div>
+                                    
+                                    <!-- PDF Upload -->
+                                    <div id="quick-pdf-wrap" class="hidden relative">
+                                        <div class="quick-input border-2 border-dashed border-primary/30 bg-primary/5 rounded-2xl px-4 py-6 text-center hover:bg-primary/10 transition cursor-pointer relative">
+                                            <input type="file" id="quick-file" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                            <div class="flex flex-col items-center justify-center gap-2 text-primary">
+                                                <i class="fa-solid fa-cloud-arrow-up text-3xl mb-1"></i> 
+                                                <span id="quick-file-name" class="font-bold text-lg">คลิกเพื่อเลือกไฟล์ PDF</span>
+                                                <span class="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">ขนาดสูงสุด 10MB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                <!-- Text -->
-                                <textarea id="quick-text" placeholder="พิมพ์ข้อความที่ต้องการ (Static QR ไม่สามารถแก้ไขได้)" rows="1" class="quick-input hidden w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-primary transition text-gray-800 resize-none"></textarea>
-                                
-                                <!-- PDF Upload -->
-                                <div id="quick-pdf" class="quick-input hidden border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-center hover:bg-gray-50 transition cursor-pointer relative bg-white">
-                                    <input type="file" id="quick-file" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                                    <div class="flex items-center justify-center gap-2 text-gray-600">
-                                        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="quick-file-name" class="font-medium">คลิกเพื่อเลือกไฟล์ PDF (สูงสุด 10MB)</span>
+                                <button onclick="quickSaveQR()" id="btn-quick-save" class="w-full lg:w-auto bg-gradient-to-r from-primary to-secondary text-white px-10 py-4 rounded-2xl font-bold hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 transition-all shrink-0 flex items-center justify-center gap-2">
+                                    สร้าง QR Code <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Customization Settings -->
+                            <div class="mt-4 pt-4 border-t border-gray-100 hidden" id="quick-advanced">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">ชื่อเรียก (เพื่อจำง่าย)</label>
+                                        <input type="text" id="quick-name" placeholder="เช่น เมนูร้านอาหาร, นามบัตร" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">โทนสีของคิวอาร์</label>
+                                        <div class="flex gap-2">
+                                            <button onclick="setQuickColor('#0f172a')" class="qc-btn w-8 h-8 rounded-full bg-slate-900 ring-2 ring-offset-2 ring-slate-900"></button>
+                                            <button onclick="setQuickColor('#8b5cf6')" class="qc-btn w-8 h-8 rounded-full bg-violet-500"></button>
+                                            <button onclick="setQuickColor('#ec4899')" class="qc-btn w-8 h-8 rounded-full bg-pink-500"></button>
+                                            <button onclick="setQuickColor('#0ea5e9')" class="qc-btn w-8 h-8 rounded-full bg-sky-500"></button>
+                                            <input type="color" id="quick-color-picker" onchange="setQuickColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer shrink-0">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <button onclick="quickSaveQR()" id="btn-quick-save" class="bg-primary text-white px-8 py-3 rounded-lg font-medium hover:bg-secondary transition shrink-0 flex items-center justify-center gap-2 shadow-sm">
-                                สร้างรหัส QR <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- Customization Settings (Collapsible) -->
-                        <div class="mt-4 pt-4 border-t border-gray-100 hidden" id="quick-advanced">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">ชื่อรหัส QR (ออปชัน)</label>
-                                    <input type="text" id="quick-name" placeholder="ตั้งชื่อให้จำง่าย..." class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:border-primary">
+                            <div class="mt-4 text-center lg:text-left">
+                                <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
+                            </div>
+
+                            <!-- Progress Bar for PDF -->
+                            <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                                <div class="flex justify-between text-sm text-gray-700 font-bold mb-2">
+                                    <span><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...</span>
+                                    <span id="quick-progress-text" class="text-primary">0%</span>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">สีคิวอาร์โค้ด</label>
-                                    <div class="flex gap-2">
-                                        <button onclick="setQuickColor('#000000')" class="qc-btn w-6 h-6 rounded-full bg-black ring-2 ring-offset-1 ring-black"></button>
-                                        <button onclick="setQuickColor('#4f46e5')" class="qc-btn w-6 h-6 rounded-full bg-indigo-600"></button>
-                                        <button onclick="setQuickColor('#ea580c')" class="qc-btn w-6 h-6 rounded-full bg-orange-600"></button>
-                                        <input type="color" id="quick-color-picker" onchange="setQuickColor(this.value)" class="w-6 h-6 p-0 border-0 rounded-full cursor-pointer">
-                                    </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                    <div id="quick-progress-bar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-3 text-right">
-                            <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-xs text-gray-500 hover:text-primary font-medium"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
-                        </div>
+                    </div>
 
-                        <!-- Progress Bar for PDF -->
-                        <div id="quick-progress-wrap" class="w-full mt-4 hidden">
-                            <div class="flex justify-between text-xs text-gray-500 mb-1 font-medium">
-                                <span>กำลังอัปโหลด...</span>
-                                <span id="quick-progress-text">0%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                <div id="quick-progress-bar" class="bg-primary h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    <!-- List Header & Filters -->
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-extrabold text-gray-800">คิวอาร์โค้ดของคุณ</h2>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <div class="relative w-full md:w-64">
+                                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                <input type="text" placeholder="ค้นหาชื่อ หรือ ลิงก์..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-primary shadow-sm">
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Filters & Controls -->
-                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-200 pb-4">
-                    <div class="flex gap-4 text-sm font-medium text-gray-600">
-                        <div class="flex items-center gap-2 cursor-pointer hover:text-gray-900"><i class="fa-regular fa-folder"></i> โฟลเดอร์ทั้งหมด <i class="fa-solid fa-chevron-down text-[10px]"></i></div>
-                        <div class="flex items-center gap-2 cursor-pointer hover:text-gray-900"><i class="fa-solid fa-tag"></i> แท็ก <i class="fa-solid fa-chevron-down text-[10px]"></i></div>
-                        <div class="flex items-center gap-2 cursor-pointer hover:text-gray-900">เรียงตามใหม่ล่าสุด <i class="fa-solid fa-chevron-down text-[10px]"></i></div>
-                    </div>
-                    <div class="flex gap-2 w-full md:w-auto">
-                        <div class="relative w-full md:w-64">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="text" placeholder="ค้นหา..." class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm outline-none focus:border-primary">
+                    <div id="loading-list" class="flex justify-center py-16 hidden">
+                        <div class="flex flex-col items-center gap-3">
+                            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-primary"></i>
+                            <p class="text-gray-500 font-medium">กำลังดึงข้อมูล...</p>
                         </div>
-                        <button class="border border-gray-300 px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 bg-white"><i class="fa-regular fa-circle-check"></i> เลือก</button>
+                    </div>
+
+                    <div id="empty-list" class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300 hidden">
+                        <div class="w-20 h-20 bg-indigo-50 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">พื้นที่ยังว่างเปล่า</h3>
+                        <p class="text-gray-500">สร้าง QR Code ตัวแรกด้วยกล่องเครื่องมือด้านบนได้เลย</p>
+                    </div>
+
+                    <!-- Grid Modern Cards -->
+                    <div id="qr-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
+                        <!-- Cards injected via JS -->
                     </div>
                 </div>
 
-                <div id="loading-list" class="flex justify-center py-12 hidden">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-gray-300"></i>
-                </div>
-
-                <div id="empty-list" class="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 hidden">
-                    <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl">
-                        <i class="fa-solid fa-qrcode"></i>
+                <!-- VIEW: ANALYTICS -->
+                <div id="view-analytics" class="app-view hidden max-w-[1000px] mx-auto fade-in">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                        <h1 class="text-3xl font-extrabold text-gray-900">ภาพรวมสถิติ</h1>
+                        <span class="inline-flex items-center gap-2 text-xs text-green-700 font-bold bg-green-100 px-3 py-1.5 rounded-full border border-green-200">
+                            <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span></span> Real-time Sync Active
+                        </span>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-800 mb-1">ยังไม่มีรหัส QR</h3>
-                    <p class="text-gray-500 text-sm">ใช้กล่องด้านบนเพื่อสร้างรหัส QR ตัวแรกของคุณเลย</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full"></div>
+                            <div>
+                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">รหัส QR ทั้งหมด</p>
+                                <p id="stat-total-qr" class="text-4xl font-black text-gray-900">0</p>
+                            </div>
+                            <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-qrcode"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/5 rounded-full"></div>
+                            <div>
+                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ยอดสแกนรวม</p>
+                                <p id="stat-total-scans" class="text-4xl font-black text-gray-900">0</p>
+                            </div>
+                            <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center text-2xl shadow-inner"><i class="fa-solid fa-eye"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+                            <div class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/5 rounded-full"></div>
+                            <div class="min-w-0 pr-2">
+                                <p class="text-sm text-gray-500 font-bold mb-1 uppercase tracking-wider">ฮิตที่สุด</p>
+                                <p id="stat-top-qr" class="text-lg font-extrabold text-gray-900 truncate">-</p>
+                            </div>
+                            <div class="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl shadow-inner shrink-0"><i class="fa-solid fa-trophy"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-gray-50 bg-gray-50/50">
+                            <h3 class="text-lg font-extrabold text-gray-900">อันดับการสแกนรายลิงก์</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-white text-gray-400 text-xs uppercase tracking-widest border-b border-gray-100">
+                                        <th class="p-5 font-bold">ชื่อรหัส QR</th>
+                                        <th class="p-5 font-bold text-center">ประเภท</th>
+                                        <th class="p-5 font-bold text-right">ยอดสแกน</th>
+                                        <th class="p-5 font-bold text-center">วันที่สร้าง</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-table" class="text-sm divide-y divide-gray-50">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Grid Hovercode Style -->
-                <div id="qr-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    <!-- Cards injected via JS -->
+                <!-- VIEW: ADMIN -->
+                <div id="view-admin" class="app-view hidden max-w-[1000px] mx-auto fade-in">
+                    <h1 class="text-3xl font-black text-gray-900 mb-2 flex items-center gap-3"><i class="fa-solid fa-shield-halved text-red-500"></i> Admin Panel</h1>
+                    <p class="text-gray-500 mb-8 text-lg">ศูนย์ควบคุมและตรวจสอบข้อมูลของผู้ใช้ทั้งหมด</p>
+                    
+                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-100">
+                                        <th class="p-5 font-bold">ประเภท</th>
+                                        <th class="p-5 font-bold">ชื่อรหัส QR / ปลายทาง</th>
+                                        <th class="p-5 font-bold">เจ้าของ (Email)</th>
+                                        <th class="p-5 font-bold">สแกน</th>
+                                        <th class="p-5 font-bold text-center">ลบ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-table-body" class="text-sm divide-y divide-gray-50">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
+
             </div>
-
-            <!-- VIEW: ANALYTICS -->
-            <div id="view-analytics" class="app-view hidden max-w-[1000px] mx-auto fade-in">
-                <div class="flex justify-between items-center mb-8">
-                    <h1 class="text-2xl font-bold text-gray-900">การวิเคราะห์ขั้นสูง</h1>
-                    <span class="flex items-center gap-1 text-[10px] text-green-600 font-bold bg-green-100 px-2 py-1 rounded-full uppercase tracking-wider border border-green-200">
-                        <i class="fa-solid fa-circle text-[6px] animate-pulse"></i> Real-time Sync
-                    </span>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500 font-medium mb-1">รหัส QR ทั้งหมด</p>
-                            <p id="stat-total-qr" class="text-3xl font-bold text-gray-900">0</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-full bg-indigo-50 text-primary flex items-center justify-center text-xl"><i class="fa-solid fa-qrcode"></i></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500 font-medium mb-1">ยอดสแกนรวม</p>
-                            <p id="stat-total-scans" class="text-3xl font-bold text-gray-900">0</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-full bg-green-50 text-green-500 flex items-center justify-center text-xl"><i class="fa-solid fa-eye"></i></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-                        <div class="min-w-0">
-                            <p class="text-sm text-gray-500 font-medium mb-1">ยอดนิยมสูงสุด</p>
-                            <p id="stat-top-qr" class="text-lg font-bold text-gray-900 truncate">-</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-trophy"></i></div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <div class="p-5 border-b border-gray-200">
-                        <h3 class="text-lg font-bold text-gray-900">ประสิทธิภาพรายลิงก์</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 font-semibold">ชื่อรหัส QR</th>
-                                    <th class="p-4 font-semibold">ประเภท</th>
-                                    <th class="p-4 font-semibold text-right">ยอดสแกน</th>
-                                    <th class="p-4 font-semibold text-center">วันที่สร้าง</th>
-                                </tr>
-                            </thead>
-                            <tbody id="analytics-table" class="text-sm divide-y divide-gray-100">
-                                <!-- Injected via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: ADMIN -->
-            <div id="view-admin" class="app-view hidden max-w-[1000px] mx-auto fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-red-500"></i> จัดการระบบแอดมิน</h1>
-                <p class="text-gray-500 mb-8 text-sm">ตรวจสอบข้อมูลและเนื้อหาทั้งหมดในระบบ</p>
-                
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                                    <th class="p-4 font-semibold">ประเภท</th>
-                                    <th class="p-4 font-semibold">ชื่อรหัส QR / ปลายทาง</th>
-                                    <th class="p-4 font-semibold">เจ้าของ (Email)</th>
-                                    <th class="p-4 font-semibold">สแกน</th>
-                                    <th class="p-4 font-semibold text-center">ลบ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-table-body" class="text-sm divide-y divide-gray-100">
-                                <!-- Injected via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        </main>
+        </div>
     </div>
 
     <!-- ================= FIREBASE & APP LOGIC ================= -->
@@ -437,7 +443,7 @@
         import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-        // --- Firebase Config (User's Config) ---
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyAVMcf_f3ytnpPptd5bTaOjyGblG7Vw0AA",
             authDomain: "dynamics-qr.firebaseapp.com",
@@ -454,7 +460,6 @@
         const storage = getStorage(app);
         window.jspdf = window.jspdf || {};
 
-        // --- Constants & Global State ---
         const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
         const COLLECTION_NAME = "hovercode_assets"; 
         
@@ -464,20 +469,21 @@
         let currentDownloadItem = null;
         let activeView = 'dashboard';
         
-        // Listeners for Realtime
         let itemsUnsubscribe = null;
         let scanDetailsUnsubscribe = null;
 
-        // Quick Create State
         let quickType = 'url';
-        let quickColor = '#000000';
+        let quickColor = '#0f172a'; 
         let quickFileObj = null;
 
-        const elSysLoading = document.getElementById('sys-loading');
-        const elLanding = document.getElementById('page-landing');
-        const elApp = document.getElementById('page-app');
+        // Ensure safe DOM element retrieval
+        const safeEl = (id) => document.getElementById(id);
         
-        // --- System Initialization & Redirect Logic ---
+        const elSysLoading = safeEl('sys-loading');
+        const elLanding = safeEl('page-landing');
+        const elApp = safeEl('page-app');
+        
+        // --- Initialization ---
         async function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const shortCode = urlParams.get('s');
@@ -492,15 +498,15 @@
                         const data = targetDoc.data();
 
                         if (data.status === 'paused') {
-                            document.getElementById('sys-loading-text').innerText = 'ลิงก์นี้ถูกระงับการใช้งานชั่วคราว';
-                            document.getElementById('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
-                            document.getElementById('sys-progress-bar').classList.add('hidden');
-                            document.querySelector('.animate-pulse').classList.replace('text-primary', 'text-red-500');
-                            document.querySelector('.animate-pulse').classList.remove('animate-pulse');
+                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'ลิงก์นี้ถูกระงับการใช้งานโดยเจ้าของ';
+                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
+                            if(safeEl('sys-progress-bar')) safeEl('sys-progress-bar').classList.add('hidden');
+                            document.querySelector('.animate-pulse')?.classList.replace('text-primary', 'text-red-500');
+                            document.querySelector('.animate-pulse')?.classList.remove('animate-pulse', 'animate-spin');
                             return; 
                         }
                         
-                        document.getElementById('sys-loading-text').innerText = 'กำลังส่งต่อไปยังปลายทาง...';
+                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'กำลังส่งต่อไปยังปลายทาง...';
 
                         const ua = navigator.userAgent;
                         let os = "อื่นๆ";
@@ -517,47 +523,42 @@
                         else if (ua.indexOf("Edge") !== -1) browser = "Edge";
                         
                         try {
-                            await addDoc(collection(db, "hovercode_analytics"), {
-                                qrId: targetDoc.id, timestamp: Date.now(), os: os, browser: browser
-                            });
+                            await addDoc(collection(db, "hovercode_analytics"), { qrId: targetDoc.id, timestamp: Date.now(), os: os, browser: browser });
                         } catch(e) {}
-
-                        await updateDoc(doc(db, COLLECTION_NAME, targetDoc.id), {
-                            scans: increment(1)
-                        }).catch(e => {});
-                        
+                        await updateDoc(doc(db, COLLECTION_NAME, targetDoc.id), { scans: increment(1) }).catch(e => {});
                         window.location.replace(data.destination);
                         return;
                     } else {
-                        document.getElementById('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง';
-                        document.getElementById('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
-                        document.getElementById('sys-progress-bar').classList.add('hidden');
-                        document.querySelector('.animate-pulse').classList.remove('animate-pulse');
+                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง';
+                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
+                        if(safeEl('sys-progress-bar')) safeEl('sys-progress-bar').classList.add('hidden');
+                        document.querySelector('.animate-pulse')?.classList.remove('animate-pulse');
                         setTimeout(() => window.location.href = window.location.pathname, 3000);
                         return;
                     }
                 } catch (error) {
-                    document.getElementById('sys-loading-text').innerText = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+                    if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
                 }
             }
 
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
-                elSysLoading.classList.add('opacity-0');
-                setTimeout(() => elSysLoading.classList.add('hidden'), 300);
+                elSysLoading?.classList.add('opacity-0');
+                setTimeout(() => elSysLoading?.classList.add('hidden'), 300);
                 
                 if (user) {
                     isAdmin = (user.email === ADMIN_EMAIL);
-                    document.getElementById('user-email-text').innerText = user.email;
-                    if(isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
+                    if(safeEl('user-email-text')) safeEl('user-email-text').innerText = user.email;
+                    if(safeEl('drop-email')) safeEl('drop-email').innerText = user.email;
+                    if(isAdmin && safeEl('admin-menu-section')) safeEl('admin-menu-section').classList.remove('hidden');
                     
-                    elLanding.classList.add('hidden');
-                    elApp.classList.remove('hidden');
+                    elLanding?.classList.add('hidden');
+                    elApp?.classList.remove('hidden');
                     toggleLoginModal(false);
                     navTo('dashboard'); 
                 } else {
-                    elLanding.classList.remove('hidden');
-                    elApp.classList.add('hidden');
+                    elLanding?.classList.remove('hidden');
+                    elApp?.classList.add('hidden');
                     if(itemsUnsubscribe) { itemsUnsubscribe(); itemsUnsubscribe = null; }
                 }
             });
@@ -570,21 +571,26 @@
             return result;
         }
 
-        // --- Navigation (Top Nav) ---
+        // --- Navigation ---
         window.navTo = (viewId) => {
             activeView = viewId;
             document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
-            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            safeEl(`view-${viewId}`)?.classList.remove('hidden');
             
-            document.querySelectorAll('.top-nav-btn').forEach(m => {
-                m.classList.remove('text-gray-900', 'font-bold', 'border-b-2', 'border-primary');
-                if(!m.classList.contains('text-red-600')) m.classList.add('text-gray-600');
+            document.querySelectorAll('.sidebar-menu').forEach(m => {
+                m.classList.remove('bg-white/10', 'text-white', 'hover:bg-white/20');
+                if(!m.classList.contains('text-red-300')) {
+                    m.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+                }
             });
-            const activeMenu = document.getElementById(`nav-${viewId}`);
+            const activeMenu = safeEl(`nav-${viewId}`);
             if(activeMenu && viewId !== 'admin') {
-                activeMenu.classList.remove('text-gray-600');
-                activeMenu.classList.add('text-gray-900', 'font-bold');
+                activeMenu.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+                activeMenu.classList.add('bg-white/10', 'text-white', 'hover:bg-white/20');
             }
+            
+            const titles = {'dashboard':'แผงควบคุม (Dashboard)', 'analytics':'ภาพรวมสถิติ (Analytics)', 'admin':'ผู้ดูแลระบบ (Admin Panel)'};
+            if(safeEl('header-title')) safeEl('header-title').innerText = titles[viewId] || '';
 
             if(viewId === 'dashboard' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
         };
@@ -595,8 +601,8 @@
             if (itemsUnsubscribe) { itemsUnsubscribe(); itemsUnsubscribe = null; }
 
             if(viewId === 'dashboard') {
-                document.getElementById('loading-list').classList.remove('hidden');
-                document.getElementById('empty-list').classList.add('hidden');
+                safeEl('loading-list')?.classList.remove('hidden');
+                safeEl('empty-list')?.classList.add('hidden');
             }
 
             let q = (isAdmin && viewId === 'admin') 
@@ -607,66 +613,71 @@
                 allItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allItems.sort((a, b) => b.createdAt - a.createdAt);
                 
-                document.getElementById('loading-list').classList.add('hidden');
+                safeEl('loading-list')?.classList.add('hidden');
                 
                 if(activeView === 'dashboard') renderQRList();
                 if(activeView === 'analytics') renderAnalytics();
                 if(activeView === 'admin' && isAdmin) renderAdminTable();
             }, (error) => {
                 console.error(error);
-                showToast("การเชื่อมต่อขัดข้อง", "error");
-                document.getElementById('loading-list').classList.add('hidden');
+                showToast("การเชื่อมต่อขัดข้อง โปรดเช็คเน็ต", "error");
+                safeEl('loading-list')?.classList.add('hidden');
             });
         }
 
-        // --- Render Hovercode Style Cards ---
+        // --- Render Modern Cards ---
         function renderQRList() {
-            const grid = document.getElementById('qr-grid');
+            const grid = safeEl('qr-grid');
+            if(!grid) return;
             if (allItems.length === 0) {
-                document.getElementById('empty-list').classList.remove('hidden');
+                safeEl('empty-list')?.classList.remove('hidden');
                 grid.innerHTML = '';
                 return;
             } else {
-                document.getElementById('empty-list').classList.add('hidden');
+                safeEl('empty-list')?.classList.add('hidden');
             }
 
             grid.innerHTML = allItems.map(item => {
                 const isStatic = item.type === 'text';
-                const shortLink = isStatic ? 'Static QR (ไม่มีลิงก์)' : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
+                const shortLink = isStatic ? 'Static QR' : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
                 const renderData = isStatic ? item.destination : shortLink;
                 
                 const currentStatus = item.status || 'active';
                 const isPaused = currentStatus === 'paused';
                 
-                const fColor = (item.color || '#000000').replace('#', '');
+                const fColor = (item.color || '#0f172a').replace('#', '');
                 const thumbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(renderData)}&color=${fColor}&bgcolor=ffffff&margin=2`;
 
                 return `
-                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition group relative">
-                    ${isPaused ? `<div class="absolute top-2 right-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-md z-10">ระงับ</div>` : ''}
+                <div class="bg-white border border-gray-200 rounded-3xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group relative flex flex-col h-full">
+                    ${isPaused ? `<div class="absolute top-4 right-4 bg-red-100 text-red-600 text-[10px] font-black px-2 py-1 rounded-lg z-10 shadow-sm uppercase tracking-wider">ระงับใช้งาน</div>` : ''}
                     
-                    <div class="bg-lightbg p-6 flex flex-col items-center justify-center relative aspect-[4/3] border-b border-gray-100 ${isPaused ? 'opacity-50 grayscale' : ''}">
-                        <img src="${thumbUrl}" class="w-2/3 h-2/3 object-contain mix-blend-multiply" alt="QR">
+                    <div class="bg-gray-50/50 p-6 flex flex-col items-center justify-center relative aspect-square border-b border-gray-100 ${isPaused ? 'opacity-40 grayscale' : ''}">
+                        <img src="${thumbUrl}" class="w-3/4 h-3/4 object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105" alt="QR">
                         
-                        <button onclick="openDownloadModal('${item.id}')" class="qr-overlay-btn absolute bottom-4 bg-white border border-gray-200 shadow-md text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 flex items-center gap-2">
-                            <i class="fa-solid fa-download"></i> ดาวน์โหลด QR
+                        <button onclick="openDownloadModal('${item.id}')" class="qr-overlay-btn absolute bottom-4 bg-dark text-white px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-download"></i> ดาวน์โหลด
                         </button>
                     </div>
                     
-                    <div class="p-4">
-                        <h3 class="font-bold text-gray-900 truncate mb-0.5" title="${item.name}">${item.name}</h3>
-                        <p class="text-xs text-gray-500 truncate mb-4 font-mono select-all ${isPaused ? 'line-through' : ''}">${isStatic ? item.destination : shortLink}</p>
+                    <div class="p-5 flex-1 flex flex-col">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="font-extrabold text-gray-900 truncate pr-2 text-lg" title="${item.name}">${item.name}</h3>
+                            <span class="bg-indigo-50 text-primary text-[9px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shrink-0">${item.type}</span>
+                        </div>
                         
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600 font-medium cursor-pointer hover:text-primary transition flex items-center gap-1.5" onclick="openScanDetails('${item.id}')">
-                                <i class="fa-solid fa-chart-simple text-gray-400"></i> ${item.scans || 0}
+                        <p class="text-[11px] text-gray-500 truncate mb-4 font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-100 ${isPaused ? 'line-through' : ''}">${isStatic ? item.destination : shortLink}</p>
+                        
+                        <div class="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                            <span class="text-sm text-gray-700 font-bold cursor-pointer hover:text-primary transition flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200" onclick="openScanDetails('${item.id}')">
+                                <i class="fa-solid fa-chart-simple text-primary"></i> ${item.scans || 0}
                             </span>
                             
-                            <div class="flex gap-1 text-gray-400">
-                                <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="w-7 h-7 flex items-center justify-center hover:text-primary hover:bg-indigo-50 rounded transition" title="คัดลอกลิงก์"><i class="fa-regular fa-copy text-sm"></i></button>
-                                ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="w-7 h-7 flex items-center justify-center hover:text-primary hover:bg-indigo-50 rounded transition" title="แก้ไข"><i class="fa-solid fa-pen-to-square text-sm"></i></button>` : ''}
-                                ${!isStatic ? `<button onclick="toggleQRStatus('${item.id}', '${currentStatus}')" class="w-7 h-7 flex items-center justify-center hover:text-amber-500 hover:bg-amber-50 rounded transition" title="${isPaused ? 'เปิดใช้งาน' : 'ระงับ'}"><i class="fa-solid ${isPaused ? 'fa-play' : 'fa-pause'} text-sm"></i></button>` : ''}
-                                <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="w-7 h-7 flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded transition" title="ลบ"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                            <div class="flex gap-1">
+                                <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="คัดลอกลิงก์"><i class="fa-regular fa-copy"></i></button>
+                                ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
+                                ${!isStatic ? `<button onclick="toggleQRStatus('${item.id}', '${currentStatus}')" class="w-8 h-8 flex items-center justify-center text-gray-500 ${isPaused ? 'hover:text-green-500 hover:bg-green-50' : 'hover:text-amber-500 hover:bg-amber-50'} rounded-lg transition" title="${isPaused ? 'เปิดใช้งาน' : 'ระงับชั่วคราว'}"><i class="fa-solid ${isPaused ? 'fa-play' : 'fa-pause'}"></i></button>` : ''}
+                                <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบถาวร"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                         </div>
                     </div>
@@ -678,59 +689,65 @@
         // --- Quick Create Logic ---
         window.selectQuickType = (type) => {
             quickType = type;
-            const titles = { 'url': 'เพิ่มลิงก์เพื่อสร้างรหัส QR', 'pdf': 'อัปโหลดไฟล์เพื่อสร้างรหัส QR', 'text': 'พิมพ์ข้อความเพื่อสร้างรหัส QR' };
-            document.getElementById('quick-title').innerText = titles[type];
-
             ['url', 'pdf', 'text'].forEach(t => {
-                const btn = document.getElementById(`qt-${t}`);
-                const input = document.getElementById(`quick-${t}`);
-                if(t === type) {
-                    btn.classList.add('border-primary', 'text-gray-900');
-                    btn.classList.remove('border-transparent', 'text-gray-500');
-                    input.classList.remove('hidden');
-                } else {
-                    btn.classList.remove('border-primary', 'text-gray-900');
-                    btn.classList.add('border-transparent', 'text-gray-500');
-                    input.classList.add('hidden');
+                const btn = safeEl(`qt-${t}`);
+                const wrap = safeEl(`quick-${t}-wrap`);
+                if(btn && wrap) {
+                    if(t === type) {
+                        btn.classList.add('bg-white', 'text-primary', 'shadow-sm');
+                        btn.classList.remove('text-gray-500');
+                        wrap.classList.remove('hidden');
+                    } else {
+                        btn.classList.remove('bg-white', 'text-primary', 'shadow-sm');
+                        btn.classList.add('text-gray-500');
+                        wrap.classList.add('hidden');
+                    }
                 }
             });
         };
 
         window.setQuickColor = (hex) => {
             quickColor = hex;
-            document.querySelectorAll('.qc-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-1', 'ring-black'));
+            document.querySelectorAll('.qc-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-900'));
             const btn = document.querySelector(`.qc-btn[onclick="setQuickColor('${hex}')"]`);
-            if(btn) btn.classList.add('ring-2', 'ring-offset-1', 'ring-black');
-            else document.getElementById('quick-color-picker').value = hex;
+            if(btn) btn.classList.add('ring-2', 'ring-offset-2', 'ring-slate-900');
+            else if(safeEl('quick-color-picker')) safeEl('quick-color-picker').value = hex;
         };
 
-        document.getElementById('quick-file').addEventListener('change', (e) => {
-            if(e.target.files.length > 0) {
-                quickFileObj = e.target.files[0];
-                if(quickFileObj.size > 10 * 1024 * 1024) {
-                    showToast("ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
-                    quickFileObj = null; return;
+        const quickFileEl = safeEl('quick-file');
+        if (quickFileEl) {
+            quickFileEl.addEventListener('change', (e) => {
+                if(e.target.files.length > 0) {
+                    quickFileObj = e.target.files[0];
+                    if(quickFileObj.size > 10 * 1024 * 1024) {
+                        showToast("ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
+                        quickFileObj = null; return;
+                    }
+                    if(safeEl('quick-file-name')) {
+                        safeEl('quick-file-name').innerText = quickFileObj.name;
+                        safeEl('quick-file-name').classList.add('text-primary');
+                    }
                 }
-                document.getElementById('quick-file-name').innerText = quickFileObj.name;
-                document.getElementById('quick-file-name').classList.add('text-primary');
-            }
-        });
+            });
+        }
 
         window.quickSaveQR = async () => {
-            const btn = document.getElementById('btn-quick-save');
+            const btn = safeEl('btn-quick-save');
+            if(!btn) return;
             const spin = btn.querySelector('.fa-circle-notch');
+            const progressWrap = safeEl('quick-progress-wrap');
             
             let finalDestination = "";
             let storagePath = null;
             let inputData = "";
 
             if (quickType === 'url') {
-                inputData = document.getElementById('quick-url').value.trim();
+                inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
                 if (!/^https?:\/\//i.test(inputData)) inputData = 'http://' + inputData;
                 finalDestination = inputData;
             } else if (quickType === 'text') {
-                inputData = document.getElementById('quick-text').value.trim();
+                inputData = safeEl('quick-text')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ข้อความ", "error");
                 finalDestination = inputData;
             } else if (quickType === 'pdf') {
@@ -738,8 +755,7 @@
                 inputData = quickFileObj.name;
             }
 
-            // Generate name if empty
-            let name = document.getElementById('quick-name').value.trim();
+            let name = safeEl('quick-name')?.value.trim() || '';
             if(!name) {
                 if(quickType === 'url') {
                     try { name = new URL(finalDestination).hostname; } catch(e) { name = finalDestination.substring(0,20); }
@@ -748,14 +764,16 @@
                 }
             }
 
-            btn.disabled = true; spin.classList.remove('hidden');
+            btn.disabled = true; 
+            if(spin) spin.classList.remove('hidden');
 
             try {
                 if (quickType === 'pdf') {
-                    const wrap = document.getElementById('quick-progress-wrap');
-                    const bar = document.getElementById('quick-progress-bar');
-                    const txt = document.getElementById('quick-progress-text');
-                    wrap.classList.remove('hidden');
+                    const bar = safeEl('quick-progress-bar');
+                    const txt = safeEl('quick-progress-text');
+                    if(progressWrap) progressWrap.classList.remove('hidden');
+                    if(bar) bar.style.width = '0%';
+                    if(txt) txt.innerText = '0%';
 
                     const fileRef = ref(storage, `hovercode_files/${currentUser.uid}/${Date.now()}_${quickFileObj.name}`);
                     const uploadTask = uploadBytesResumable(fileRef, quickFileObj);
@@ -764,7 +782,8 @@
                         uploadTask.on('state_changed', 
                             (snap) => { 
                                 const p = (snap.bytesTransferred / snap.totalBytes) * 100;
-                                bar.style.width = `${p}%`; txt.innerText = `${Math.round(p)}%`;
+                                if(bar) bar.style.width = `${p}%`; 
+                                if(txt) txt.innerText = `${Math.round(p)}%`;
                             }, 
                             err => reject(err), 
                             async () => {
@@ -773,7 +792,6 @@
                             }
                         );
                     });
-                    wrap.classList.add('hidden');
                 }
 
                 const shortCode = (quickType !== 'text') ? generateShortCode(4) : null;
@@ -785,60 +803,76 @@
                     status: 'active', scans: 0, storagePath: storagePath, createdAt: Date.now()
                 });
                 
-                showToast("สร้างรหัส QR สำเร็จ!");
+                showToast("สร้าง Dynamic QR สำเร็จ!");
                 
-                // Reset quick form
-                document.getElementById('quick-url').value = '';
-                document.getElementById('quick-text').value = '';
-                document.getElementById('quick-name').value = '';
+                // Reset form
+                if(safeEl('quick-url')) safeEl('quick-url').value = '';
+                if(safeEl('quick-text')) safeEl('quick-text').value = '';
+                if(safeEl('quick-name')) safeEl('quick-name').value = '';
                 quickFileObj = null;
-                document.getElementById('quick-file-name').innerText = 'คลิกเพื่อเลือกไฟล์ PDF (สูงสุด 10MB)';
-                document.getElementById('quick-file-name').classList.remove('text-primary');
-                document.getElementById('quick-advanced').classList.add('hidden');
+                if(safeEl('quick-file-name')) {
+                    safeEl('quick-file-name').innerText = 'คลิกเพื่อเลือกไฟล์ PDF';
+                    safeEl('quick-file-name').classList.remove('text-primary');
+                }
+                safeEl('quick-advanced')?.classList.add('hidden');
                 
             } catch (error) {
-                showToast(error.message, "error");
+                console.error(error);
+                showToast("อัปโหลดล้มเหลว (โปรดเช็คสิทธิ์ Storage หรือขนาดไฟล์)", "error");
             } finally {
-                btn.disabled = false; spin.classList.add('hidden');
+                btn.disabled = false; 
+                if(spin) spin.classList.add('hidden');
+                if(progressWrap) progressWrap.classList.add('hidden');
             }
         };
 
-        // --- Other Functions ---
+        // --- Core Functions ---
         window.toggleQRStatus = async (id, currentStatus) => {
             const newStatus = currentStatus === 'active' ? 'paused' : 'active';
             try {
                 await updateDoc(doc(db, COLLECTION_NAME, id), { status: newStatus });
-                showToast(`อัปเดตเป็น ${newStatus === 'active' ? 'Active' : 'ระงับลิงก์'}`);
+                showToast(`เปลี่ยนสถานะเรียบร้อย`);
             } catch(e) { showToast("อัปเดตสถานะล้มเหลว", "error"); }
         };
 
         window.openEditModal = (id, currentUrl, name) => {
-            document.getElementById('edit-qr-id').value = id;
-            document.getElementById('edit-qr-url').value = currentUrl;
-            document.getElementById('edit-qr-name').value = name;
-            document.getElementById('edit-modal').classList.remove('hidden');
+            if(safeEl('edit-qr-id')) safeEl('edit-qr-id').value = id;
+            if(safeEl('edit-qr-url')) safeEl('edit-qr-url').value = currentUrl;
+            if(safeEl('edit-qr-name')) safeEl('edit-qr-name').value = name;
+            safeEl('edit-modal')?.classList.remove('hidden');
         };
 
-        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
+        window.closeEditModal = () => safeEl('edit-modal')?.classList.add('hidden');
 
-        document.getElementById('form-edit-qr').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-qr-id').value;
-            let newUrl = document.getElementById('edit-qr-url').value.trim();
-            if (!/^https?:\/\//i.test(newUrl)) newUrl = 'http://' + newUrl;
+        const formEditQrEl = safeEl('form-edit-qr');
+        if(formEditQrEl) {
+            formEditQrEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = safeEl('edit-qr-id')?.value;
+                let newUrl = safeEl('edit-qr-url')?.value.trim() || '';
+                if (!/^https?:\/\//i.test(newUrl)) newUrl = 'http://' + newUrl;
 
-            const btn = document.getElementById('btn-save-edit');
-            btn.disabled = true; btn.querySelector('.fa-circle-notch').classList.remove('hidden');
-            try {
-                await updateDoc(doc(db, COLLECTION_NAME, id), { destination: newUrl, name: document.getElementById('edit-qr-name').value.trim() });
-                showToast("บันทึกการแก้ไขสำเร็จ");
-                closeEditModal();
-            } catch (error) { showToast("เกิดข้อผิดพลาด", "error"); } 
-            finally { btn.disabled = false; btn.querySelector('.fa-circle-notch').classList.add('hidden'); }
-        });
+                const btn = safeEl('btn-save-edit');
+                if(btn) {
+                    btn.disabled = true; 
+                    btn.querySelector('.fa-circle-notch')?.classList.remove('hidden');
+                }
+                try {
+                    await updateDoc(doc(db, COLLECTION_NAME, id), { destination: newUrl, name: safeEl('edit-qr-name')?.value.trim() || '' });
+                    showToast("บันทึกการแก้ไขสำเร็จ");
+                    closeEditModal();
+                } catch (error) { showToast("เกิดข้อผิดพลาด", "error"); } 
+                finally { 
+                    if(btn) {
+                        btn.disabled = false; 
+                        btn.querySelector('.fa-circle-notch')?.classList.add('hidden'); 
+                    }
+                }
+            });
+        }
 
         window.deleteQR = async (id, storagePath) => {
-            if(!confirm("ลบ QR Code นี้อย่างถาวร?")) return;
+            if(!confirm("ลบ QR Code นี้อย่างถาวร? ลิงก์จะไม่สามารถใช้การได้อีก")) return;
             try {
                 if (storagePath) await deleteObject(ref(storage, storagePath)).catch(e=>{});
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
@@ -846,58 +880,66 @@
             } catch (error) { showToast("ลบล้มเหลว", "error"); }
         };
 
-        // Scan details
+        window.copyText = (text) => {
+            const textArea = document.createElement("textarea"); textArea.value = text;
+            document.body.appendChild(textArea); textArea.select();
+            try { document.execCommand('copy'); showToast("คัดลอกลิงก์แล้ว"); } catch (e) { }
+            document.body.removeChild(textArea);
+        };
+
+        // --- Scan details ---
         window.openScanDetails = (id) => {
             const item = allItems.find(i => i.id === id);
             if(!item) return;
-            document.getElementById('scan-details-title').innerText = `${item.name}`;
-            document.getElementById('scan-details-modal').classList.remove('hidden');
-            document.getElementById('scan-details-loading').classList.remove('hidden');
-            document.getElementById('scan-details-body').innerHTML = '';
+            if(safeEl('scan-details-title')) safeEl('scan-details-title').innerText = `${item.name}`;
+            safeEl('scan-details-modal')?.classList.remove('hidden');
+            safeEl('scan-details-loading')?.classList.remove('hidden');
+            if(safeEl('scan-details-body')) safeEl('scan-details-body').innerHTML = '';
 
             if (scanDetailsUnsubscribe) scanDetailsUnsubscribe();
             scanDetailsUnsubscribe = onSnapshot(query(collection(db, 'hovercode_analytics'), where("qrId", "==", id)), (snapshot) => {
                 let logs = snapshot.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
-                document.getElementById('scan-details-loading').classList.add('hidden');
+                safeEl('scan-details-loading')?.classList.add('hidden');
                 if(logs.length === 0) {
-                     document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-6 text-center text-gray-500">ยังไม่มีประวัติการสแกน</td></tr>`;
+                     if(safeEl('scan-details-body')) safeEl('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-6 text-center text-gray-400 font-medium">ยังไม่มีประวัติการสแกน</td></tr>`;
                 } else {
-                     document.getElementById('scan-details-body').innerHTML = logs.map(l => `
-                        <tr class="hover:bg-gray-50">
+                     if(safeEl('scan-details-body')) safeEl('scan-details-body').innerHTML = logs.map(l => `
+                        <tr class="hover:bg-gray-50 border-b border-gray-100 last:border-0 fade-in">
                             <td class="p-4 text-sm text-gray-600">${new Date(l.timestamp).toLocaleString('th-TH')}</td>
-                            <td class="p-4 text-sm text-gray-800 font-medium">${getOSIconHTML(l.os)} ${l.os}</td>
-                            <td class="p-4 text-sm text-gray-800">${getBrowserIconHTML(l.browser)} ${l.browser}</td>
+                            <td class="p-4 text-sm text-gray-800 font-bold">${getOSIconHTML(l.os)} ${l.os}</td>
+                            <td class="p-4 text-sm text-gray-800 font-medium">${getBrowserIconHTML(l.browser)} ${l.browser}</td>
                         </tr>
                      `).join('');
                 }
-            }, e => document.getElementById('scan-details-loading').classList.add('hidden'));
+            }, e => safeEl('scan-details-loading')?.classList.add('hidden'));
         };
+        
         window.closeScanDetails = () => {
             if (scanDetailsUnsubscribe) { scanDetailsUnsubscribe(); scanDetailsUnsubscribe = null; }
-            document.getElementById('scan-details-modal').classList.add('hidden');
+            safeEl('scan-details-modal')?.classList.add('hidden');
         };
 
         function getOSIconHTML(os) {
-            if(os.includes('Win')) return '<i class="fa-brands fa-windows text-blue-500 w-4 text-center"></i>';
-            if(os.includes('Mac') || os.includes('iOS')) return '<i class="fa-brands fa-apple text-gray-800 w-4 text-center"></i>';
-            if(os.includes('Android')) return '<i class="fa-brands fa-android text-green-500 w-4 text-center"></i>';
-            return '<i class="fa-solid fa-laptop text-gray-400 w-4 text-center"></i>';
+            if(os.includes('Win')) return '<i class="fa-brands fa-windows text-sky-500 w-5 text-center text-lg"></i>';
+            if(os.includes('Mac') || os.includes('iOS')) return '<i class="fa-brands fa-apple text-gray-800 w-5 text-center text-lg"></i>';
+            if(os.includes('Android')) return '<i class="fa-brands fa-android text-emerald-500 w-5 text-center text-lg"></i>';
+            return '<i class="fa-solid fa-laptop text-gray-400 w-5 text-center text-lg"></i>';
         }
         function getBrowserIconHTML(browser) {
-            if(browser.includes('Chrome')) return '<i class="fa-brands fa-chrome text-blue-500 w-4 text-center"></i>';
-            if(browser.includes('Safari')) return '<i class="fa-brands fa-safari text-blue-400 w-4 text-center"></i>';
-            return '<i class="fa-solid fa-globe text-gray-400 w-4 text-center"></i>';
+            if(browser.includes('Chrome')) return '<i class="fa-brands fa-chrome text-rose-500 w-5 text-center text-lg"></i>';
+            if(browser.includes('Safari')) return '<i class="fa-brands fa-safari text-sky-400 w-5 text-center text-lg"></i>';
+            return '<i class="fa-solid fa-globe text-gray-400 w-5 text-center text-lg"></i>';
         }
 
-        // Downloads
+        // --- Downloads ---
         window.openDownloadModal = (id) => {
             currentDownloadItem = allItems.find(i => i.id === id);
             if(currentDownloadItem) {
-                document.getElementById('dl-qr-name').innerText = `"${currentDownloadItem.name}"`;
-                document.getElementById('download-modal').classList.remove('hidden');
+                if(safeEl('dl-qr-name')) safeEl('dl-qr-name').innerText = `"${currentDownloadItem.name}"`;
+                safeEl('download-modal')?.classList.remove('hidden');
             }
         };
-        window.closeDownloadModal = () => document.getElementById('download-modal').classList.add('hidden');
+        window.closeDownloadModal = () => safeEl('download-modal')?.classList.add('hidden');
 
         window.processDownload = (format) => {
             if(!currentDownloadItem) return;
@@ -905,80 +947,92 @@
             const isStatic = item.type === 'text';
             const renderData = isStatic ? item.destination : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
             const fColor = item.color || '#000000';
-            const filename = `QR_${item.name.replace(/\s+/g, '_')}`;
+            const filename = `QR_${(item.name || 'nexus').replace(/[^a-zA-Z0-9ก-๙]/g, '_')}`;
 
             showToast(`เตรียมไฟล์ ${format.toUpperCase()}...`);
             
+            const triggerDownload = (url, name) => {
+                const link = document.createElement('a');
+                link.href = url; link.download = name;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            };
+            
             if(format === 'svg') {
                 QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
-                    if(err) return;
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
-                    link.download = `${filename}.svg`; link.click();
+                    if(err) return showToast("สร้าง SVG ไม่สำเร็จ", "error");
+                    const url = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
+                    triggerDownload(url, `${filename}.svg`);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
                     closeDownloadModal();
                 });
             } else if (format === 'pdf') {
                 QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
-                    if(err) return;
-                    const doc = new window.jspdf.jsPDF();
-                    doc.setFontSize(20); doc.text(item.name, 105, 30, null, null, "center");
-                    doc.addImage(url, 'PNG', 35, 50, 140, 140);
-                    doc.setFontSize(10); doc.setTextColor(100); doc.text(`Link: ${renderData}`, 105, 200, null, null, "center");
-                    doc.save(`${filename}.pdf`); closeDownloadModal();
+                    if(err) return showToast("สร้างไฟล์ไม่สำเร็จ", "error");
+                    try {
+                        const doc = new window.jspdf.jsPDF();
+                        doc.setFontSize(20); doc.text(item.name || 'QR Code', 105, 30, null, null, "center");
+                        doc.addImage(url, 'PNG', 35, 50, 140, 140);
+                        doc.setFontSize(10); doc.setTextColor(100); doc.text(`Link: ${renderData}`, 105, 200, null, null, "center");
+                        doc.save(`${filename}.pdf`); 
+                        closeDownloadModal();
+                    } catch(e) { showToast("เกิดข้อผิดพลาดในการสร้าง PDF", "error"); }
                 });
             } else {
-                QRCode.toDataURL(renderData, { type: `image/${format}`, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
-                    if(err) return;
-                    const link = document.createElement('a');
-                    link.download = `${filename}.${format}`; link.href = url; link.click();
+                const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+                QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                    if(err) return showToast("สร้างรูปภาพไม่สำเร็จ", "error");
+                    triggerDownload(url, `${filename}.${format}`);
                     closeDownloadModal();
                 });
             }
         };
 
-        window.copyText = (text) => {
-            const textArea = document.createElement("textarea"); textArea.value = text;
-            document.body.appendChild(textArea); textArea.select();
-            try { document.execCommand('copy'); showToast("คัดลอกลิงก์สำเร็จ"); } catch (e) { }
-            document.body.removeChild(textArea);
-        };
-
-        // Analytics & Admin renders
+        // --- Analytics & Admin renders ---
         function renderAnalytics() {
-            document.getElementById('stat-total-qr').innerText = allItems.length;
-            document.getElementById('stat-total-scans').innerText = allItems.reduce((sum, item) => sum + (item.scans || 0), 0);
+            if(safeEl('stat-total-qr')) safeEl('stat-total-qr').innerText = allItems.length;
+            if(safeEl('stat-total-scans')) safeEl('stat-total-scans').innerText = allItems.reduce((sum, item) => sum + (item.scans || 0), 0);
             const sortedByScans = [...allItems].sort((a, b) => (b.scans || 0) - (a.scans || 0));
-            document.getElementById('stat-top-qr').innerText = sortedByScans[0]?.name || '-';
-            document.getElementById('analytics-table').innerHTML = sortedByScans.map(item => `
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="p-4 font-medium text-gray-800 truncate max-w-[200px]">${item.name}</td>
-                    <td class="p-4"><span class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-bold uppercase tracking-wider">${item.type}</span></td>
-                    <td class="p-4 text-right font-bold text-gray-900">${item.scans || 0}</td>
-                    <td class="p-4 text-center text-gray-500 text-sm">${new Date(item.createdAt).toLocaleDateString('th-TH')}</td>
-                </tr>
-            `).join('');
+            if(safeEl('stat-top-qr')) safeEl('stat-top-qr').innerText = sortedByScans[0]?.name || '-';
+            
+            const tbody = safeEl('analytics-table');
+            if(tbody) {
+                tbody.innerHTML = sortedByScans.map(item => `
+                    <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                        <td class="p-5 font-bold text-gray-800 truncate max-w-[200px]">${item.name}</td>
+                        <td class="p-5 text-center"><span class="text-[10px] bg-indigo-50 text-primary px-2 py-1 rounded font-black uppercase tracking-widest">${item.type}</span></td>
+                        <td class="p-5 text-right font-black text-gray-900 text-lg">${item.scans || 0}</td>
+                        <td class="p-5 text-center text-gray-500 text-xs font-medium">${new Date(item.createdAt).toLocaleDateString('th-TH')}</td>
+                    </tr>
+                `).join('');
+            }
         }
 
         function renderAdminTable() {
-            document.getElementById('admin-table-body').innerHTML = allItems.map(item => `
-                <tr class="hover:bg-gray-50">
-                    <td class="p-4"><span class="text-xs bg-gray-100 px-2 py-1 rounded font-bold uppercase">${item.type}</span></td>
-                    <td class="p-4 font-medium truncate max-w-[200px]">
-                        ${item.name}<br><span class="text-xs text-gray-400 font-mono">${item.destination}</span>
-                    </td>
-                    <td class="p-4 text-sm text-gray-600">${item.userEmail}</td>
-                    <td class="p-4 font-bold text-gray-900">${item.scans || 0}</td>
-                    <td class="p-4 text-center">
-                        <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+            const tbody = safeEl('admin-table-body');
+            if(tbody) {
+                tbody.innerHTML = allItems.map(item => `
+                    <tr class="hover:bg-gray-50 border-b border-gray-50">
+                        <td class="p-5 text-center"><span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-black uppercase tracking-widest">${item.type}</span></td>
+                        <td class="p-5">
+                            <p class="font-bold text-gray-800 truncate max-w-[250px]">${item.name}</p>
+                            <p class="text-xs text-gray-400 font-mono mt-1">${item.destination}</p>
+                        </td>
+                        <td class="p-5 text-sm font-medium text-primary">${item.userEmail}</td>
+                        <td class="p-5 font-black text-gray-900">${item.scans || 0}</td>
+                        <td class="p-5 text-center">
+                            <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
         }
 
-        // Auth
+        // --- Auth ---
         window.toggleLoginModal = (show) => {
-            const modal = document.getElementById('login-modal');
-            const content = document.getElementById('login-modal-content');
+            const modal = safeEl('login-modal');
+            const content = safeEl('login-modal-content');
+            if(!modal || !content) return;
+            
             if(show) {
                 modal.classList.remove('hidden');
                 setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
@@ -988,25 +1042,45 @@
             }
         };
 
-        document.getElementById('btn-google-login').addEventListener('click', async () => {
-            document.getElementById('login-spinner').classList.remove('hidden');
-            try { await signInWithPopup(auth, googleProvider); } 
-            catch (error) { showToast(error.message, "error"); }
-            finally { document.getElementById('login-spinner').classList.add('hidden'); }
-        });
+        const btnGoogleLoginEl = safeEl('btn-google-login');
+        if(btnGoogleLoginEl) {
+            btnGoogleLoginEl.addEventListener('click', async () => {
+                const spinner = safeEl('login-spinner');
+                if(spinner) spinner.classList.remove('hidden');
+                try { await signInWithPopup(auth, googleProvider); } 
+                catch (error) { showToast("เข้าสู่ระบบล้มเหลว (โดเมนนี้อาจต้องตั้งค่าใน Firebase)", "error"); }
+                finally { if(spinner) spinner.classList.add('hidden'); }
+            });
+        }
 
-        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+        const btnLogoutEl = safeEl('btn-logout');
+        if(btnLogoutEl) {
+            btnLogoutEl.addEventListener('click', () => signOut(auth));
+        }
         
         let toastTimeout;
         window.showToast = (msg, type = 'success') => {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-message').innerText = msg;
+            const t = safeEl('toast');
+            if(!t) return;
+            if(safeEl('toast-message')) safeEl('toast-message').innerText = msg;
             t.classList.replace(type === 'error' ? 'bg-dark' : 'bg-red-600', type === 'error' ? 'bg-red-600' : 'bg-dark');
-            document.getElementById('toast-icon').className = type === 'error' ? 'fa-solid fa-circle-exclamation text-white text-xl' : 'fa-solid fa-circle-check text-green-400 text-xl';
+            t.classList.replace(type === 'error' ? 'border-gray-700' : 'border-red-700', type === 'error' ? 'border-red-700' : 'border-gray-700');
+            if(safeEl('toast-icon')) safeEl('toast-icon').className = type === 'error' ? 'fa-solid fa-circle-exclamation text-white text-xl' : 'fa-solid fa-circle-check text-green-400 text-xl';
             t.classList.remove('translate-x-[120%]');
             clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3000);
+            toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3500);
         };
+
+        const btnMobileMenuEl = safeEl('btn-mobile-menu');
+        if(btnMobileMenuEl) {
+            btnMobileMenuEl.addEventListener('click', () => {
+                const sidebar = document.querySelector('aside');
+                if(!sidebar) return;
+                sidebar.classList.toggle('hidden');
+                if(!sidebar.classList.contains('hidden')) sidebar.classList.add('absolute', 'z-50', 'h-full', 'shadow-2xl');
+                else sidebar.classList.remove('absolute', 'z-50', 'h-full', 'shadow-2xl');
+            });
+        }
 
         init();
 
