@@ -12,6 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- QRCode.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- jsPDF Library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -101,6 +103,67 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Download Options Modal -->
+    <div id="download-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full relative shadow-2xl fade-in text-center">
+            <button onclick="closeDownloadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold text-gray-900 mb-2">ดาวน์โหลด QR Code</h2>
+            <p id="dl-qr-name" class="text-sm text-gray-500 mb-6 truncate font-medium">ชื่อคิวอาร์โค้ด</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="processDownload('png')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
+                    <i class="fa-regular fa-image text-2xl text-gray-500 group-hover:text-primary transition"></i>
+                    <span class="font-bold text-gray-700">PNG</span>
+                </button>
+                <button onclick="processDownload('jpeg')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
+                    <i class="fa-solid fa-image text-2xl text-gray-500 group-hover:text-primary transition"></i>
+                    <span class="font-bold text-gray-700">JPG</span>
+                </button>
+                <button onclick="processDownload('svg')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
+                    <i class="fa-solid fa-bezier-curve text-2xl text-gray-500 group-hover:text-primary transition"></i>
+                    <span class="font-bold text-gray-700">SVG (Vector)</span>
+                </button>
+                <button onclick="processDownload('pdf')" class="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-xl transition group">
+                    <i class="fa-solid fa-file-pdf text-2xl text-gray-500 group-hover:text-primary transition"></i>
+                    <span class="font-bold text-gray-700">PDF Document</span>
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-4 text-left"><i class="fa-solid fa-circle-info"></i> แนะนำ: ใช้ <b>SVG</b> หากต้องการนำไปขยายใหญ่ติดป้ายโฆษณาภาพจะไม่แตก</p>
+        </div>
+    </div>
+
+    <!-- Scan Details Modal -->
+    <div id="scan-details-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl relative shadow-2xl fade-in flex flex-col max-h-[80vh]">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+                <h2 id="scan-details-title" class="text-xl font-bold text-gray-900 truncate">รายละเอียดการสแกน</h2>
+                <button onclick="document.getElementById('scan-details-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1">
+                <div id="scan-details-loading" class="flex justify-center py-8">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-gray-300"></i>
+                </div>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                            <th class="p-3 rounded-l-lg font-semibold">วัน-เวลา ที่เข้าชม</th>
+                            <th class="p-3 font-semibold">ระบบปฏิบัติการ (OS)</th>
+                            <th class="p-3 rounded-r-lg font-semibold">เบราว์เซอร์</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scan-details-body" class="text-sm">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -235,7 +298,7 @@
                         <button onclick="navTo('create')" class="bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-secondary transition">สร้างเลย</button>
                     </div>
 
-                    <div id="qr-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div id="qr-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <!-- Cards injected via JS -->
                     </div>
                 </div>
@@ -289,15 +352,15 @@
                 </div>
 
                 <!-- VIEW: CREATE BUILDER -->
-                <div id="view-create" class="app-view hidden max-w-5xl mx-auto fade-in h-full flex flex-col">
+                <div id="view-create" class="app-view hidden max-w-6xl mx-auto fade-in h-full flex flex-col">
                     <div class="flex items-center gap-3 mb-6">
                         <button onclick="navTo('list')" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition"><i class="fa-solid fa-arrow-left"></i></button>
                         <h1 class="text-2xl font-bold text-slate-900">สร้าง Dynamic QR Code</h1>
                     </div>
 
-                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8">
                         <!-- Left: Form -->
-                        <div class="lg:col-span-2 space-y-6">
+                        <div class="lg:col-span-7 xl:col-span-8 space-y-6">
                             
                             <!-- Step 1: Type Selection -->
                             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -305,15 +368,15 @@
                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     <button type="button" onclick="selectType('url')" id="type-btn-url" class="type-selector p-4 rounded-xl border-2 border-primary bg-indigo-50 text-center transition">
                                         <i class="fa-solid fa-link text-2xl text-primary mb-2"></i>
-                                        <p class="font-semibold text-sm text-gray-800">เว็บไซต์ (URL)</p>
+                                        <p class="font-semibold text-sm text-gray-800 mt-1">เว็บไซต์ (URL)</p>
                                     </button>
                                     <button type="button" onclick="selectType('pdf')" id="type-btn-pdf" class="type-selector p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-gray-100 text-center transition opacity-60">
                                         <i class="fa-solid fa-file-pdf text-2xl text-red-500 mb-2"></i>
-                                        <p class="font-semibold text-sm text-gray-800">ไฟล์ PDF</p>
+                                        <p class="font-semibold text-sm text-gray-800 mt-1">ไฟล์ PDF</p>
                                     </button>
                                     <button type="button" onclick="selectType('text')" id="type-btn-text" class="type-selector p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-gray-100 text-center transition opacity-60">
                                         <i class="fa-solid fa-font text-2xl text-gray-600 mb-2"></i>
-                                        <p class="font-semibold text-sm text-gray-800">ข้อความ (Static)</p>
+                                        <p class="font-semibold text-sm text-gray-800 mt-1">ข้อความ (Static)</p>
                                     </button>
                                 </div>
                             </div>
@@ -337,7 +400,7 @@
                                         <input type="file" id="create-file" accept=".pdf,image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-3"></i>
                                         <p id="create-file-name" class="text-gray-700 font-medium">คลิกหรือลากไฟล์ PDF มาวางที่นี่</p>
-                                        <p class="text-sm text-gray-500 mt-1">สูงสุด 10MB</p>
+                                        <p class="text-sm text-gray-500 mt-1">ขนาดสูงสุด 10MB</p>
                                     </div>
                                     <p class="text-xs text-gray-500"><i class="fa-solid fa-bolt text-yellow-500"></i> Dynamic: เมื่ออัปโหลดแล้ว ระบบจะสร้างหน้าแสดงไฟล์ให้โดยอัตโนมัติ</p>
                                 </div>
@@ -363,33 +426,77 @@
                                     สร้างและบันทึก QR Code <i id="create-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
                                 </button>
                                 
-                                <div id="upload-progress-wrap" class="w-full bg-gray-200 rounded-full h-2 mt-4 hidden">
-                                    <div id="upload-progress-bar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                <!-- Detailed Upload Progress -->
+                                <div id="upload-progress-wrap" class="w-full mt-4 hidden p-4 bg-gray-50 border border-gray-200 rounded-xl fade-in">
+                                    <div class="flex justify-between items-center text-sm text-gray-700 font-medium mb-2">
+                                        <span id="upload-text-status"><i class="fa-solid fa-cloud-arrow-up text-primary mr-1"></i> กำลังอัปโหลดไฟล์...</span>
+                                        <span id="upload-text-percent" class="text-primary font-bold">0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                        <div id="upload-progress-bar" class="bg-primary h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                    <div class="text-right text-xs text-gray-500 font-mono mt-2" id="upload-text-size">
+                                        0.00 MB / 0.00 MB
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right: Preview -->
-                        <div class="lg:col-span-1">
+                        <!-- Right: Preview & Advanced Customization -->
+                        <div class="lg:col-span-5 xl:col-span-4">
                             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-4">
-                                <h3 class="font-bold text-gray-800 mb-4 text-center">ตัวอย่าง QR Code (Preview)</h3>
+                                <h3 class="font-bold text-gray-800 mb-4 text-center">ตัวอย่าง QR Code</h3>
                                 
-                                <div class="bg-gray-50 p-6 rounded-xl flex items-center justify-center mb-6 min-h-[250px] border border-gray-200">
+                                <div class="bg-gray-50 p-6 rounded-xl flex items-center justify-center mb-6 min-h-[250px] border border-gray-200 shadow-inner">
                                     <div id="qr-preview-container" class="qr-canvas-wrapper w-full flex justify-center">
                                         <!-- Canvas injected by QRCode.js -->
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกสี QR Code</label>
-                                    <div class="flex flex-wrap gap-2 justify-center">
-                                        <button onclick="setQRColor('#000000')" class="w-8 h-8 rounded-full bg-black ring-2 ring-offset-2 ring-black"></button>
-                                        <button onclick="setQRColor('#4f46e5')" class="w-8 h-8 rounded-full bg-indigo-600 hover:scale-110 transition"></button>
-                                        <button onclick="setQRColor('#2563eb')" class="w-8 h-8 rounded-full bg-blue-600 hover:scale-110 transition"></button>
-                                        <button onclick="setQRColor('#059669')" class="w-8 h-8 rounded-full bg-emerald-600 hover:scale-110 transition"></button>
-                                        <button onclick="setQRColor('#dc2626')" class="w-8 h-8 rounded-full bg-red-600 hover:scale-110 transition"></button>
-                                        <input type="color" id="custom-color-picker" onchange="setQRColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">สีลวดลาย (Foreground Color)</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button onclick="setQRColor('#000000')" class="qr-color-btn w-8 h-8 rounded-full bg-black ring-2 ring-offset-2 ring-black"></button>
+                                            <button onclick="setQRColor('#4f46e5')" class="qr-color-btn w-8 h-8 rounded-full bg-indigo-600 hover:scale-110 transition"></button>
+                                            <button onclick="setQRColor('#2563eb')" class="qr-color-btn w-8 h-8 rounded-full bg-blue-600 hover:scale-110 transition"></button>
+                                            <button onclick="setQRColor('#059669')" class="qr-color-btn w-8 h-8 rounded-full bg-emerald-600 hover:scale-110 transition"></button>
+                                            <button onclick="setQRColor('#dc2626')" class="qr-color-btn w-8 h-8 rounded-full bg-red-600 hover:scale-110 transition"></button>
+                                            <input type="color" id="custom-color-picker" onchange="setQRColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer shrink-0">
+                                        </div>
                                     </div>
+
+                                    <div class="pt-2 border-t border-gray-100">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">สีพื้นหลัง (Background Color)</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button onclick="setQRBgColor('#ffffff')" class="qr-bg-btn w-8 h-8 rounded-full bg-white border border-gray-300 ring-2 ring-offset-2 ring-gray-300"></button>
+                                            <button onclick="setQRBgColor('#f8fafc')" class="qr-bg-btn w-8 h-8 rounded-full bg-slate-50 border border-gray-300 hover:scale-110 transition"></button>
+                                            <button onclick="setQRBgColor('#fffbeb')" class="qr-bg-btn w-8 h-8 rounded-full bg-amber-50 border border-gray-300 hover:scale-110 transition"></button>
+                                            <button onclick="setQRBgColor('#1e293b')" class="qr-bg-btn w-8 h-8 rounded-full bg-slate-800 border border-gray-300 hover:scale-110 transition"></button>
+                                            <input type="color" id="custom-bg-color-picker" value="#ffffff" onchange="setQRBgColor(this.value)" class="w-8 h-8 p-0 border-0 rounded-full cursor-pointer shrink-0">
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">ขอบขาว (Margin)</label>
+                                            <select id="qr-margin" onchange="setQRMargin(this.value)" class="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary bg-white">
+                                                <option value="1">น้อย (1)</option>
+                                                <option value="2" selected>ปานกลาง (2)</option>
+                                                <option value="4">มาก (4)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">ความละเอียดจุด (ECC)</label>
+                                            <select id="qr-ecc" onchange="setQRECC(this.value)" class="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary bg-white">
+                                                <option value="L">ต่ำ (L)</option>
+                                                <option value="M" selected>กลาง (M)</option>
+                                                <option value="Q">สูง (Q)</option>
+                                                <option value="H">สูงสุด (H)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-2 text-center">* หากต้องการนำรูปไปแปะโลโก้ตรงกลาง แนะนำให้ปรับความละเอียดจุด (ECC) เป็น <b>สูงสุด (H)</b></p>
                                 </div>
                             </div>
                         </div>
@@ -447,37 +554,38 @@
         const googleProvider = new GoogleAuthProvider();
         const db = getFirestore(app);
         const storage = getStorage(app);
+        window.jspdf = window.jspdf || {};
 
         // --- Constants & Global State ---
         const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
-        const COLLECTION_NAME = "hovercode_assets"; // New collection to avoid mixing with old data format
+        const COLLECTION_NAME = "hovercode_assets"; 
         
         let currentUser = null;
         let isAdmin = false;
         let allItems = [];
+        let currentDownloadItem = null;
         
         // Create Builder State
         let currentCreateType = 'url';
         let currentQRColor = '#000000';
+        let currentQRBgColor = '#ffffff';
+        let currentQRMargin = 2;
+        let currentQRECLevel = 'M';
         let uploadFileObj = null;
-        let previewQRInstance = null; // Holds the QRCode.js object
+        let previewQRInstance = null;
 
-        // --- DOM Elements ---
         const elSysLoading = document.getElementById('sys-loading');
         const elLanding = document.getElementById('page-landing');
         const elApp = document.getElementById('page-app');
-        const elLoginModal = document.getElementById('login-modal');
         
         // --- System Initialization & Redirect Logic ---
         async function init() {
-            // 1. Check if this is a scan redirect
             const urlParams = new URLSearchParams(window.location.search);
             const shortCode = urlParams.get('s');
             
             if (shortCode) {
-                document.getElementById('sys-loading-text').innerText = 'กำลังพาดคุณไปยังปลายทาง...';
+                document.getElementById('sys-loading-text').innerText = 'กำลังพาคุณไปยังปลายทาง...';
                 try {
-                    // Find the dynamic link by shortCode
                     const q = query(collection(db, COLLECTION_NAME), where("shortCode", "==", shortCode));
                     const snapshot = await getDocs(q);
                     
@@ -485,16 +593,41 @@
                         const targetDoc = snapshot.docs[0];
                         const data = targetDoc.data();
                         
-                        // Increment Scan count (Analytics feature)
+                        // Parse User-Agent for detailed tracking
+                        const ua = navigator.userAgent;
+                        let os = "อื่นๆ";
+                        if (ua.indexOf("Win") !== -1) os = "Windows";
+                        if (ua.indexOf("Mac") !== -1) os = "MacOS";
+                        if (ua.indexOf("Linux") !== -1) os = "Linux";
+                        if (ua.indexOf("Android") !== -1) os = "Android";
+                        if (ua.indexOf("like Mac") !== -1) os = "iOS";
+
+                        let browser = "อื่นๆ";
+                        if (ua.indexOf("Chrome") !== -1) browser = "Chrome";
+                        else if (ua.indexOf("Safari") !== -1) browser = "Safari";
+                        else if (ua.indexOf("Firefox") !== -1) browser = "Firefox";
+                        else if (ua.indexOf("Edge") !== -1) browser = "Edge";
+                        
+                        // 1. Log Detailed Scan (Try-Catch in case Firebase rules block anonymous write)
+                        try {
+                            await addDoc(collection(db, "hovercode_analytics"), {
+                                qrId: targetDoc.id,
+                                timestamp: Date.now(),
+                                os: os,
+                                browser: browser
+                            });
+                        } catch(e) { console.log("Analytics detail log skipped due to rules"); }
+
+                        // 2. Increment Overall Scan Count
                         await updateDoc(doc(db, COLLECTION_NAME, targetDoc.id), {
                             scans: increment(1)
-                        }).catch(e => console.log("Analytics update failed (rules issue?)", e));
+                        }).catch(e => console.log("Analytics update failed", e));
                         
-                        // Redirect to the actual destination
+                        // Redirect!
                         window.location.replace(data.destination);
-                        return; // Halt execution
+                        return;
                     } else {
-                        document.getElementById('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง หรือ QR Code ถูกลบไปแล้ว';
+                        document.getElementById('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง หรือถูกลบไปแล้ว';
                         document.getElementById('sys-loading-text').classList.add('text-red-500');
                         document.querySelector('.animate-pulse').classList.add('hidden');
                         setTimeout(() => window.location.href = window.location.pathname, 3000);
@@ -506,7 +639,7 @@
                 }
             }
 
-            // 2. Normal App Load - Setup Auth Listener
+            // Normal Setup
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
                 elSysLoading.classList.add('opacity-0');
@@ -515,17 +648,13 @@
                 if (user) {
                     isAdmin = (user.email === ADMIN_EMAIL);
                     document.getElementById('user-email-text').innerText = user.email;
-                    
-                    if(isAdmin) {
-                        document.getElementById('admin-menu-section').classList.remove('hidden');
-                    }
+                    if(isAdmin) document.getElementById('admin-menu-section').classList.remove('hidden');
                     
                     elLanding.classList.add('hidden');
                     elApp.classList.remove('hidden');
                     toggleLoginModal(false);
-                    
-                    navTo('list'); // Default view
-                    initQRPreview(); // Setup canvas
+                    navTo('list'); 
+                    initQRPreview(); 
                 } else {
                     elLanding.classList.remove('hidden');
                     elApp.classList.add('hidden');
@@ -533,12 +662,18 @@
             });
         }
 
-        // --- Navigation (SPA Logic) ---
+        // Generate Short Base62 ID (4 chars ~ 14.7 million combos)
+        function generateShortCode(length = 4) {
+            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let result = '';
+            for (let i = 0; i < length; i++) result += chars[Math.floor(Math.random() * chars.length)];
+            return result;
+        }
+
         window.navTo = (viewId) => {
             document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
             document.getElementById(`view-${viewId}`).classList.remove('hidden');
             
-            // Sidebar active state
             document.querySelectorAll('.sidebar-menu').forEach(m => {
                 m.classList.remove('bg-indigo-50', 'text-primary');
                 if(!m.classList.contains('text-red-600')) m.classList.add('text-gray-600');
@@ -549,19 +684,12 @@
                 activeMenu.classList.add('bg-indigo-50', 'text-primary');
             }
 
-            if(viewId === 'list' || viewId === 'analytics' || viewId === 'admin') {
-                fetchDataAndRender(viewId);
-            }
-            
-            if(viewId === 'create') {
-                resetCreateForm();
-            }
+            if(viewId === 'list' || viewId === 'analytics' || viewId === 'admin') fetchDataAndRender(viewId);
+            if(viewId === 'create') resetCreateForm();
         };
 
-        // --- Fetch & Render Data ---
         async function fetchDataAndRender(viewId) {
             if(!currentUser) return;
-            
             if(viewId === 'list') {
                 document.getElementById('loading-list').classList.remove('hidden');
                 document.getElementById('empty-list').classList.add('hidden');
@@ -575,12 +703,11 @@
                 
                 const snapshot = await getDocs(q);
                 allItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                allItems.sort((a, b) => b.createdAt - a.createdAt); // Newest first
+                allItems.sort((a, b) => b.createdAt - a.createdAt);
                 
                 if(viewId === 'list') renderQRList();
                 if(viewId === 'analytics') renderAnalytics();
                 if(viewId === 'admin' && isAdmin) renderAdminTable();
-
             } catch (error) {
                 console.error(error);
                 showToast("โหลดข้อมูลล้มเหลว", "error");
@@ -600,50 +727,183 @@
                 const isStatic = item.type === 'text';
                 const typeIcon = item.type === 'url' ? 'fa-link' : item.type === 'pdf' ? 'fa-file-pdf' : 'fa-font';
                 const shortLink = isStatic ? 'Static QR (ไม่มีลิงก์ย่อ)' : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
-                
-                // Generate DataURL for Thumbnail (re-creating QR on the fly for display)
-                // In a real heavy app, we'd save the DataURL to DB, but for this CDN approach, we'll draw it in a hidden div or use an API just for thumbnail.
-                // To keep it simple and performant, we use the free qrserver api JUST for the small thumbnail in dashboard.
                 const renderData = isStatic ? item.destination : shortLink;
-                const thumbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(renderData)}&color=${item.color.replace('#','')}`;
+                
+                const fColor = (item.color || '#000000').replace('#', '');
+                const bgCol = (item.bgColor || '#ffffff').replace('#', '');
+                const thumbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(renderData)}&color=${fColor}&bgcolor=${bgCol}&margin=${item.margin || 2}&ecc=${item.ecc || 'M'}`;
 
                 return `
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col transition hover:shadow-md group">
-                    <div class="flex gap-4 items-start mb-4">
-                        <div class="w-20 h-20 rounded-xl bg-gray-50 border border-gray-200 p-1 shrink-0 overflow-hidden relative">
+                    <div class="flex gap-4 items-start mb-2">
+                        <div class="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 p-1 shrink-0 overflow-hidden relative">
                             <img src="${thumbUrl}" class="w-full h-full object-contain" alt="QR">
-                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer" onclick="downloadQR('${renderData}', '${item.color}', '${item.name}')">
-                                <i class="fa-solid fa-download text-white"></i>
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer" onclick="openDownloadModal('${item.id}')">
+                                <i class="fa-solid fa-download text-white text-xl"></i>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start">
                                 <h3 class="font-bold text-gray-900 truncate pr-2 text-lg">${item.name}</h3>
-                                ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="text-gray-400 hover:text-primary transition p-1" title="แก้ไขปลายทาง"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
+                                ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="text-gray-400 hover:text-primary transition p-1 bg-gray-50 rounded" title="แก้ไขปลายทาง"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             </div>
-                            <div class="flex items-center gap-2 mt-1">
+                            <div class="flex items-center gap-2 mt-1 mb-2">
                                 <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded flex items-center gap-1"><i class="fa-solid ${typeIcon}"></i> ${item.type.toUpperCase()}</span>
                                 ${!isStatic ? `<span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"><i class="fa-solid fa-bolt"></i> Dynamic</span>` : ''}
                             </div>
-                            <p class="text-xs text-gray-400 mt-2 truncate font-mono">${isStatic ? item.destination : shortLink}</p>
+                            <div class="text-xs text-gray-500 font-medium flex items-center gap-1">
+                                ยอดสแกน: <button onclick="openScanDetails('${item.id}')" class="text-primary hover:underline font-bold px-1">${item.scans || 0}</button> ครั้ง
+                            </div>
                         </div>
                     </div>
+
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 mt-auto flex items-center justify-between gap-2 shadow-inner">
+                        <div class="flex-1 min-w-0 flex items-center gap-2 px-2 overflow-hidden">
+                            <i class="fa-solid ${isStatic ? 'fa-align-left' : 'fa-link'} text-gray-400"></i>
+                            <p class="text-sm text-gray-700 font-mono truncate select-all">${isStatic ? item.destination : shortLink}</p>
+                        </div>
+                        <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="shrink-0 w-9 h-9 flex items-center justify-center text-primary bg-indigo-100 hover:bg-primary hover:text-white rounded-md transition shadow-sm" title="คัดลอกลิงก์">
+                            <i class="fa-regular fa-copy text-lg"></i>
+                        </button>
+                    </div>
                     
-                    <div class="grid grid-cols-2 gap-2 border-t border-gray-100 pt-4 mt-auto">
-                        <div class="text-center p-2 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-500 mb-1">ยอดสแกน</p>
-                            <p class="font-bold text-gray-800">${item.scans || 0}</p>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            ${!isStatic ? `<button onclick="window.copyText('${shortLink}')" class="flex-1 text-xs font-medium text-primary bg-indigo-50 hover:bg-indigo-100 rounded-lg transition py-1">คัดลอกลิงก์</button>` : `<div class="flex-1"></div>`}
-                            <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="flex-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition py-1">ลบข้อมูล</button>
-                        </div>
+                    <div class="flex justify-end pt-3 mt-3 border-t border-gray-100">
+                        <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition px-3 py-1 flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> ลบข้อมูล
+                        </button>
                     </div>
                 </div>
                 `;
             }).join('');
         }
 
+        // --- View Scan Details (Detailed Analytics) ---
+        window.openScanDetails = async (id) => {
+            const item = allItems.find(i => i.id === id);
+            if(!item) return;
+
+            document.getElementById('scan-details-title').innerText = `สถิติเจาะลึก: ${item.name}`;
+            const modal = document.getElementById('scan-details-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('scan-details-loading').classList.remove('hidden');
+            document.getElementById('scan-details-body').innerHTML = '';
+
+            try {
+                const q = query(collection(db, 'hovercode_analytics'), where("qrId", "==", id));
+                const snapshot = await getDocs(q);
+                let logs = snapshot.docs.map(d => d.data());
+                logs.sort((a,b) => b.timestamp - a.timestamp); // sort by newest
+
+                if(logs.length === 0) {
+                     document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">ไม่พบประวัติการสแกนแบบละเอียดในระบบ (อาจเป็นสถิติเก่า)</td></tr>`;
+                } else {
+                     document.getElementById('scan-details-body').innerHTML = logs.map(l => `
+                        <tr class="border-b border-gray-50 hover:bg-gray-50">
+                            <td class="p-3 text-sm text-gray-700">${new Date(l.timestamp).toLocaleString('th-TH')}</td>
+                            <td class="p-3 text-sm text-gray-700 font-medium">${getOSIconHTML(l.os)} ${l.os || 'ไม่ระบุ'}</td>
+                            <td class="p-3 text-sm text-gray-700">${getBrowserIconHTML(l.browser)} ${l.browser || 'ไม่ระบุ'}</td>
+                        </tr>
+                     `).join('');
+                }
+            } catch(e) {
+                console.error(e);
+                document.getElementById('scan-details-body').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">ไม่สามารถโหลดข้อมูลได้ (กรุณาตรวจสอบ Firestore Rules ให้รองรับการอ่าน Collection 'hovercode_analytics')</td></tr>`;
+            } finally {
+                document.getElementById('scan-details-loading').classList.add('hidden');
+            }
+        };
+
+        function getOSIconHTML(os) {
+            if(!os) return '<i class="fa-solid fa-laptop text-gray-400"></i>';
+            if(os.includes('Win')) return '<i class="fa-brands fa-windows text-blue-500"></i>';
+            if(os.includes('Mac') || os.includes('iOS')) return '<i class="fa-brands fa-apple text-gray-800"></i>';
+            if(os.includes('Android')) return '<i class="fa-brands fa-android text-green-500"></i>';
+            return '<i class="fa-solid fa-mobile-screen text-gray-500"></i>';
+        }
+        function getBrowserIconHTML(browser) {
+            if(!browser) return '<i class="fa-solid fa-globe text-gray-400"></i>';
+            if(browser.includes('Chrome')) return '<i class="fa-brands fa-chrome text-green-500"></i>';
+            if(browser.includes('Safari')) return '<i class="fa-brands fa-safari text-blue-400"></i>';
+            if(browser.includes('Firefox')) return '<i class="fa-brands fa-firefox-browser text-orange-500"></i>';
+            if(browser.includes('Edge')) return '<i class="fa-brands fa-edge text-blue-600"></i>';
+            return '<i class="fa-solid fa-globe text-gray-500"></i>';
+        }
+
+        // --- Advanced Download Handling ---
+        window.openDownloadModal = (id) => {
+            const item = allItems.find(i => i.id === id);
+            if(!item) return;
+            currentDownloadItem = item;
+            document.getElementById('dl-qr-name').innerText = `"${item.name}"`;
+            document.getElementById('download-modal').classList.remove('hidden');
+        };
+        
+        window.closeDownloadModal = () => document.getElementById('download-modal').classList.add('hidden');
+
+        window.processDownload = (format) => {
+            if(!currentDownloadItem) return;
+            const item = currentDownloadItem;
+            
+            const isStatic = item.type === 'text';
+            const renderData = isStatic ? item.destination : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
+            
+            const fColor = item.color || '#000000';
+            const bgCol = item.bgColor || '#ffffff';
+            const fMargin = parseInt(item.margin || 2);
+            const fEcc = item.ecc || 'M';
+            const filename = `QR_${item.name.replace(/\s+/g, '_')}`;
+
+            showToast(`กำลังเตรียมไฟล์ ${format.toUpperCase()}...`);
+            
+            if(format === 'svg') {
+                QRCode.toString(renderData, { type: 'svg', margin: fMargin, errorCorrectionLevel: fEcc, color: { dark: fColor, light: bgCol } }, (err, string) => {
+                    if(err) return showToast("สร้างไฟล์ SVG ไม่สำเร็จ", "error");
+                    const blob = new Blob([string], {type: "image/svg+xml;charset=utf-8"});
+                    downloadBlob(blob, `${filename}.svg`);
+                    closeDownloadModal();
+                });
+            } else if (format === 'pdf') {
+                QRCode.toDataURL(renderData, { type: 'image/png', width: 1000, margin: fMargin, errorCorrectionLevel: fEcc, color: { dark: fColor, light: bgCol } }, (err, url) => {
+                    if(err) return showToast("สร้างไฟล์ไม่สำเร็จ", "error");
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(22);
+                    // Add Title
+                    doc.text(item.name, 105, 30, null, null, "center");
+                    // Add Image
+                    doc.addImage(url, 'PNG', 35, 50, 140, 140);
+                    // Add Link
+                    doc.setFont("Helvetica", "normal");
+                    doc.setFontSize(10);
+                    doc.setTextColor(100);
+                    doc.text(`Link: ${renderData}`, 105, 200, null, null, "center");
+                    
+                    doc.save(`${filename}.pdf`);
+                    closeDownloadModal();
+                });
+            } else {
+                // PNG or JPEG
+                QRCode.toDataURL(renderData, { type: `image/${format}`, width: 1000, margin: fMargin, errorCorrectionLevel: fEcc, color: { dark: fColor, light: bgCol } }, (err, url) => {
+                    if(err) return showToast("สร้างรูปภาพไม่สำเร็จ", "error");
+                    const link = document.createElement('a');
+                    link.download = `${filename}.${format}`;
+                    link.href = url;
+                    link.click();
+                    closeDownloadModal();
+                });
+            }
+        };
+
+        function downloadBlob(blob, name) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 100);
+        }
+
+        // --- Build Core Functions ---
         function renderAnalytics() {
             const totalQR = allItems.length;
             const totalScans = allItems.reduce((sum, item) => sum + (item.scans || 0), 0);
@@ -677,10 +937,8 @@
             `).join('');
         }
 
-        // --- Create Builder Logic ---
         window.selectType = (type) => {
             currentCreateType = type;
-            // UI Toggle
             ['url', 'pdf', 'text'].forEach(t => {
                 const btn = document.getElementById(`type-btn-${t}`);
                 const sec = document.getElementById(`input-section-${t}`);
@@ -706,57 +964,60 @@
             document.getElementById('create-name').value = '';
             uploadFileObj = null;
             document.getElementById('create-file-name').innerText = 'คลิกหรือลากไฟล์ PDF มาวางที่นี่';
+            document.getElementById('upload-progress-wrap').classList.add('hidden');
             setQRColor('#000000');
+            setQRBgColor('#ffffff');
+            document.getElementById('qr-margin').value = "2";
+            document.getElementById('qr-ecc').value = "M";
+            currentQRMargin = 2;
+            currentQRECLevel = "M";
             updateQRPreview();
         }
 
-        // --- Live Preview with QRCode.js ---
         function initQRPreview() {
             const container = document.getElementById('qr-preview-container');
             container.innerHTML = '<canvas id="preview-canvas"></canvas>';
             previewQRInstance = document.getElementById('preview-canvas');
-            updateQRPreview(); // Initial empty render
+            updateQRPreview(); 
         }
 
         window.setQRColor = (hex) => {
             currentQRColor = hex;
-            // Reset ring highlight
-            document.querySelectorAll('.flex-wrap button').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-black'));
-            // Try to add ring if standard button clicked
-            const btn = document.querySelector(`button[onclick="setQRColor('${hex}')"]`);
+            document.querySelectorAll('.qr-color-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-black'));
+            const btn = document.querySelector(`.qr-color-btn[onclick="setQRColor('${hex}')"]`);
             if(btn) btn.classList.add('ring-2', 'ring-offset-2', 'ring-black');
             else document.getElementById('custom-color-picker').value = hex;
-            
             updateQRPreview();
         };
+
+        window.setQRBgColor = (hex) => {
+            currentQRBgColor = hex;
+            document.querySelectorAll('.qr-bg-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-gray-300'));
+            const btn = document.querySelector(`.qr-bg-btn[onclick="setQRBgColor('${hex}')"]`);
+            if(btn) btn.classList.add('ring-2', 'ring-offset-2', 'ring-gray-300');
+            else document.getElementById('custom-bg-color-picker').value = hex;
+            updateQRPreview();
+        }
+
+        window.setQRMargin = (val) => { currentQRMargin = parseInt(val); updateQRPreview(); };
+        window.setQRECC = (val) => { currentQRECLevel = val; updateQRPreview(); };
 
         window.updateQRPreview = () => {
             if(!previewQRInstance) return;
             
-            let data = "https://dynamicqr.com"; // Placeholder
-            
-            if(currentCreateType === 'url' && document.getElementById('create-url').value) {
-                data = document.getElementById('create-url').value;
-            } else if (currentCreateType === 'text' && document.getElementById('create-text').value) {
-                data = document.getElementById('create-text').value;
-            } else if (currentCreateType === 'pdf' && uploadFileObj) {
-                data = "PDF File Ready to Upload"; 
-            }
+            let data = "https://dynamicqr.com"; 
+            if(currentCreateType === 'url' && document.getElementById('create-url').value) data = document.getElementById('create-url').value;
+            else if (currentCreateType === 'text' && document.getElementById('create-text').value) data = document.getElementById('create-text').value;
+            else if (currentCreateType === 'pdf' && uploadFileObj) data = "PDF File Ready to Upload"; 
 
-            // Using qrcode module from cdn
             QRCode.toCanvas(previewQRInstance, data, {
                 width: 200,
-                margin: 2,
-                color: {
-                    dark: currentQRColor,
-                    light: '#ffffff'
-                }
-            }, function (error) {
-                if (error) console.error(error);
-            });
+                margin: currentQRMargin,
+                errorCorrectionLevel: currentQRECLevel,
+                color: { dark: currentQRColor, light: currentQRBgColor }
+            }, function (error) { if (error) console.error(error); });
         };
 
-        // File Input listener
         document.getElementById('create-file').addEventListener('change', (e) => {
             if(e.target.files.length > 0) {
                 uploadFileObj = e.target.files[0];
@@ -771,7 +1032,6 @@
             }
         });
 
-        // --- Save QR Core Logic ---
         window.saveQRCode = async () => {
             const name = document.getElementById('create-name').value.trim();
             if(!name) { showToast("กรุณาตั้งชื่อ QR Code", "error"); return; }
@@ -795,13 +1055,16 @@
                 else if (currentCreateType === 'text') {
                     const text = document.getElementById('create-text').value.trim();
                     if(!text) throw new Error("กรุณาใส่ข้อความ");
-                    finalDestination = text; // Plain text saved directly
+                    finalDestination = text;
                 }
                 else if (currentCreateType === 'pdf') {
                     if(!uploadFileObj) throw new Error("กรุณาอัปโหลดไฟล์ PDF");
                     
                     const progressWrap = document.getElementById('upload-progress-wrap');
                     const progressBar = document.getElementById('upload-progress-bar');
+                    const progressTextPercent = document.getElementById('upload-text-percent');
+                    const progressTextSize = document.getElementById('upload-text-size');
+                    
                     progressWrap.classList.remove('hidden');
 
                     const fileRef = ref(storage, `hovercode_files/${currentUser.uid}/${Date.now()}_${uploadFileObj.name}`);
@@ -809,7 +1072,14 @@
 
                     finalDestination = await new Promise((resolve, reject) => {
                         uploadTask.on('state_changed', 
-                            (snap) => { progressBar.style.width = `${(snap.bytesTransferred / snap.totalBytes) * 100}%`; }, 
+                            (snap) => { 
+                                const percent = (snap.bytesTransferred / snap.totalBytes) * 100;
+                                const uploadedMB = (snap.bytesTransferred / (1024 * 1024)).toFixed(2);
+                                const totalMB = (snap.totalBytes / (1024 * 1024)).toFixed(2);
+                                progressBar.style.width = `${percent}%`; 
+                                progressTextPercent.innerText = `${Math.round(percent)}%`;
+                                progressTextSize.innerText = `${uploadedMB} MB / ${totalMB} MB`;
+                            }, 
                             (err) => reject(err), 
                             async () => {
                                 storagePath = fileRef.fullPath;
@@ -817,11 +1087,9 @@
                             }
                         );
                     });
-                    progressWrap.classList.add('hidden');
                 }
 
-                // Generate shortCode for Dynamic QRs (url, pdf)
-                const shortCode = (currentCreateType !== 'text') ? Math.random().toString(36).substring(2, 8) : null;
+                const shortCode = (currentCreateType !== 'text') ? generateShortCode(4) : null;
 
                 const docData = {
                     userId: currentUser.uid,
@@ -831,6 +1099,9 @@
                     destination: finalDestination,
                     shortCode: shortCode,
                     color: currentQRColor,
+                    bgColor: currentQRBgColor,
+                    margin: currentQRMargin,
+                    ecc: currentQRECLevel,
                     scans: 0,
                     storagePath: storagePath,
                     createdAt: Date.now()
@@ -849,19 +1120,14 @@
             }
         };
 
-        // --- Edit Dynamic URL ---
         window.openEditModal = (id, currentUrl, name) => {
             document.getElementById('edit-qr-id').value = id;
             document.getElementById('edit-qr-url').value = currentUrl;
             document.getElementById('edit-qr-name').value = name;
-            
-            const modal = document.getElementById('edit-modal');
-            modal.classList.remove('hidden');
+            document.getElementById('edit-modal').classList.remove('hidden');
         };
 
-        window.closeEditModal = () => {
-            document.getElementById('edit-modal').classList.add('hidden');
-        };
+        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
         document.getElementById('form-edit-qr').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -876,10 +1142,7 @@
             btn.disabled = true; spin.classList.remove('hidden');
 
             try {
-                await updateDoc(doc(db, COLLECTION_NAME, id), {
-                    destination: newUrl,
-                    name: newName
-                });
+                await updateDoc(doc(db, COLLECTION_NAME, id), { destination: newUrl, name: newName });
                 showToast("อัปเดตข้อมูลสำเร็จ! ผู้สแกนจะไปที่ลิงก์ใหม่ทันที");
                 closeEditModal();
                 fetchDataAndRender('list');
@@ -890,33 +1153,16 @@
             }
         });
 
-        // --- Utility Actions ---
         window.deleteQR = async (id, storagePath) => {
             if(!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบ QR Code นี้? ข้อมูลและลิงก์จะไม่สามารถใช้งานได้อีก")) return;
             try {
-                if (storagePath) {
-                    await deleteObject(ref(storage, storagePath)).catch(e => console.log("Storage skip", e));
-                }
+                if (storagePath) await deleteObject(ref(storage, storagePath)).catch(e => console.log("Storage skip", e));
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
                 showToast("ลบข้อมูลสำเร็จ!");
                 fetchDataAndRender(isAdmin && document.getElementById('view-admin').classList.contains('hidden') === false ? 'admin' : 'list');
             } catch (error) {
                 showToast("ลบล้มเหลว", "error");
             }
-        };
-
-        window.downloadQR = (dataToEncode, colorHex, filename) => {
-            // Generate a high-res canvas in memory and download
-            const tempCanvas = document.createElement('canvas');
-            QRCode.toCanvas(tempCanvas, dataToEncode, {
-                width: 1000, margin: 2, color: { dark: colorHex, light: '#ffffff' }
-            }, function (error) {
-                if (error) { showToast("ไม่สามารถสร้างรูปได้", "error"); return; }
-                const link = document.createElement('a');
-                link.download = `QR_${filename.replace(/\s+/g, '_')}.png`;
-                link.href = tempCanvas.toDataURL("image/png");
-                link.click();
-            });
         };
 
         window.copyText = (text) => {
@@ -929,7 +1175,6 @@
             document.body.removeChild(textArea);
         };
 
-        // --- Modals & Auth UI ---
         window.toggleLoginModal = (show) => {
             const modal = document.getElementById('login-modal');
             const content = document.getElementById('login-modal-content');
@@ -948,27 +1193,18 @@
 
         document.getElementById('btn-google-login').addEventListener('click', async () => {
             document.getElementById('login-spinner').classList.remove('hidden');
-            try { 
-                await signInWithPopup(auth, googleProvider); 
-            } 
+            try { await signInWithPopup(auth, googleProvider); } 
             catch (error) { 
                 if (error.code === 'auth/unauthorized-domain') {
-                    const currentDomain = window.location.hostname || "โดเมนไม่ระบุ (อาจถูกบล็อกโดยหน้าต่าง Sandbox)";
                     document.getElementById('login-modal-content').innerHTML = `
                         <div class="text-center fade-in">
                             <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-4"></i>
                             <h2 class="text-xl font-bold text-gray-900 mb-2">โดเมนนี้ยังไม่ได้รับอนุญาต</h2>
-                            <p class="text-sm text-gray-600 mb-4">หน้าต่าง Preview นี้รันอยู่บนโดเมนพิเศษ กรุณาก๊อปปี้โดเมนด้านล่างนี้ไปเพิ่มใน <br/><b>Firebase > Authentication > Settings > Authorized domains</b></p>
-                            <div class="bg-gray-100 p-3 rounded-lg text-sm font-mono text-primary break-all mb-4 select-all border border-gray-200">
-                                ${currentDomain}
-                            </div>
-                            <p class="text-xs text-red-500 mb-4">* หลังจากก๊อปปี้ไปเพิ่มแล้ว กรุณารอประมาณ 2-5 นาทีเพื่อให้ Firebase อัปเดต</p>
-                            <button onclick="window.location.reload()" class="w-full bg-primary hover:bg-secondary transition text-white py-2.5 font-medium rounded-xl">กดที่นี่เพื่อรีเฟรชหน้าเว็บ</button>
+                            <p class="text-sm text-gray-600 mb-4">กรุณาก๊อปปี้โดเมน <b>${window.location.hostname}</b> ไปเพิ่มใน Authorized domains ของ Firebase</p>
+                            <button onclick="window.location.reload()" class="w-full bg-primary hover:bg-secondary transition text-white py-2.5 font-medium rounded-xl">กดรีเฟรชหน้าเว็บ</button>
                         </div>
                     `;
-                } else {
-                    showToast(error.message, "error"); 
-                }
+                } else showToast(error.message, "error"); 
             }
             finally { 
                 const spinner = document.getElementById('login-spinner');
@@ -978,7 +1214,6 @@
 
         document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
         
-        // Toast
         let toastTimeout;
         window.showToast = (msg, type = 'success') => {
             const t = document.getElementById('toast');
@@ -998,18 +1233,13 @@
             toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3000);
         };
 
-        // Mobile menu toggle
         document.getElementById('btn-mobile-menu').addEventListener('click', () => {
             const sidebar = document.querySelector('aside');
             sidebar.classList.toggle('hidden');
-            if(!sidebar.classList.contains('hidden')) {
-                sidebar.classList.add('absolute', 'z-50', 'h-full', 'shadow-2xl');
-            } else {
-                sidebar.classList.remove('absolute', 'z-50', 'h-full', 'shadow-2xl');
-            }
+            if(!sidebar.classList.contains('hidden')) sidebar.classList.add('absolute', 'z-50', 'h-full', 'shadow-2xl');
+            else sidebar.classList.remove('absolute', 'z-50', 'h-full', 'shadow-2xl');
         });
 
-        // Initialize App
         init();
 
     </script>
