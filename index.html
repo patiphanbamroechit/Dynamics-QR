@@ -35,7 +35,7 @@
         }
     </script>
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; color: #334155; }
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; color: #334155; }
         .hidden { display: none !important; }
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -55,7 +55,7 @@
         .text-gradient { background: linear-gradient(to right, #8b5cf6, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
-<body class="antialiased flex flex-col min-h-screen overflow-hidden">
+<body class="antialiased min-h-screen flex flex-col">
 
     <!-- System Loading & Redirect Screen -->
     <div id="sys-loading" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
@@ -94,7 +94,7 @@
     </div>
 
     <!-- ================= PUBLIC LANDING PAGE ================= -->
-    <div id="page-landing" class="hidden flex-1 flex flex-col bg-lightbg overflow-y-auto">
+    <div id="page-landing" class="hidden flex-1 flex flex-col bg-white">
         <nav class="px-6 py-5 flex justify-between items-center max-w-6xl mx-auto w-full z-40 relative">
             <div class="flex items-center gap-2 text-gray-900 font-extrabold text-2xl">
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center text-sm"><i class="fa-solid fa-qrcode"></i></div>
@@ -105,7 +105,7 @@
             </button>
         </nav>
 
-        <main class="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-5xl mx-auto w-full relative pb-20">
+        <main class="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-5xl mx-auto w-full relative pb-20 mt-10">
             <!-- Decorative Blobs -->
             <div class="absolute top-0 left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl -z-10"></div>
             <div class="absolute bottom-10 right-10 w-80 h-80 bg-secondary/20 rounded-full blur-3xl -z-10"></div>
@@ -127,15 +127,19 @@
     </div>
 
     <!-- ================= LOGGED IN APP (NEXUS THEME) ================= -->
-    <div id="page-app" class="hidden flex-1 flex h-screen bg-[#f1f5f9]">
+    <div id="page-app" class="hidden flex-1 min-h-screen w-full">
         
+        <!-- Sidebar Overlay (Mobile) -->
+        <div id="sidebar-overlay" class="hidden fixed inset-0 bg-dark/50 z-40 backdrop-blur-sm transition-opacity"></div>
+
         <!-- Modern Sidebar -->
-        <aside class="w-64 bg-sidebar text-gray-300 flex-col hidden md:flex shrink-0 shadow-xl z-20 relative">
-            <div class="h-20 flex items-center px-6 border-b border-white/10">
+        <aside id="sidebar" class="w-64 bg-sidebar text-gray-300 flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 shadow-2xl md:shadow-none">
+            <div class="h-20 flex items-center px-6 border-b border-white/10 justify-between">
                 <div class="flex items-center gap-3 text-white font-extrabold text-2xl cursor-pointer" onclick="navTo('dashboard')">
                     <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-sm shadow-lg"><i class="fa-solid fa-qrcode"></i></div>
                     <span>Nexus<span class="text-primary font-light">QR</span></span>
                 </div>
+                <button id="btn-close-sidebar" class="md:hidden text-gray-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
@@ -168,10 +172,11 @@
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0">
-            <!-- Top Header Navbar -->
-            <header class="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 z-10">
+        <!-- Main Content Area (With Margin Left for Sidebar) -->
+        <div class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300 min-h-screen">
+            
+            <!-- Top Header Navbar (Sticky for scrolling) -->
+            <header class="h-20 bg-white/90 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
                 <!-- Mobile Toggle -->
                 <div class="md:hidden flex items-center gap-3">
                     <button id="btn-mobile-menu" class="text-gray-600 hover:text-primary text-2xl transition"><i class="fa-solid fa-bars"></i></button>
@@ -182,7 +187,7 @@
                     <h2 id="header-title" class="text-xl font-bold text-gray-800">แผงควบคุม (Dashboard)</h2>
                 </div>
 
-                <!-- Right Profile Menu -->
+                <!-- Right Profile Menu (Always Top Right) -->
                 <div class="flex items-center gap-4">
                     <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-primary rounded-full text-xs font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition">
                         <i class="fa-solid fa-crown text-amber-500"></i> อัปเกรดเป็น Pro
@@ -190,7 +195,7 @@
                     
                     <!-- Advanced Profile Dropdown -->
                     <div class="relative group">
-                        <button class="flex items-center gap-3 p-1.5 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200">
+                        <button class="flex items-center gap-3 p-1.5 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200 focus:outline-none">
                             <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold"><i class="fa-regular fa-user"></i></div>
                             <div class="hidden md:block text-left mr-2">
                                 <p id="user-email-text" class="text-sm font-bold text-gray-700 leading-none">user@email.com</p>
@@ -228,8 +233,8 @@
                 </div>
             </header>
 
-            <!-- Scrollable Workspace -->
-            <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            <!-- Natural Scrollable Workspace (No overflow-hidden limits) -->
+            <div class="p-4 md:p-8 flex-1">
                 
                 <!-- VIEW: DASHBOARD (Create + List) -->
                 <div id="view-dashboard" class="app-view max-w-[1200px] mx-auto fade-in">
@@ -436,6 +441,101 @@
         </div>
     </div>
 
+    <!-- Edit QR Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-dark/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full relative shadow-2xl fade-in">
+            <button onclick="closeEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-50 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-extrabold text-gray-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-primary"></i> แก้ไขปลายทาง</h2>
+            <p class="text-sm text-gray-500 mb-6">ผู้ใช้ที่สแกน QR Code เดิมจะถูกเปลี่ยนเส้นทางมายังลิงก์ใหม่นี้ทันที</p>
+            
+            <form id="form-edit-qr" class="space-y-4">
+                <input type="hidden" id="edit-qr-id">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">ชื่อ QR Code</label>
+                    <input type="text" id="edit-qr-name" required class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">ลิงก์ปลายทางใหม่ (URL)</label>
+                    <input type="url" id="edit-qr-url" required class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition">ยกเลิก</button>
+                    <button type="submit" id="btn-save-edit" class="flex-1 py-3 px-4 bg-primary text-white rounded-xl hover:bg-secondary font-bold transition flex justify-center items-center gap-2">
+                        บันทึกการแก้ไข <i class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Download Options Modal -->
+    <div id="download-modal" class="hidden fixed inset-0 bg-dark/60 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative shadow-2xl fade-in text-center">
+            <button onclick="closeDownloadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-50 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-extrabold text-gray-900 mb-2">ดาวน์โหลดรูปภาพ</h2>
+            <p id="dl-qr-name" class="text-sm text-gray-500 mb-8 truncate font-medium bg-gray-50 px-3 py-1 rounded-lg inline-block">ชื่อคิวอาร์โค้ด</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="processDownload('png')" class="flex flex-col items-center justify-center gap-2 p-5 bg-white hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-2xl transition group shadow-sm hover:shadow-md">
+                    <i class="fa-regular fa-image text-3xl text-gray-400 group-hover:text-primary transition"></i>
+                    <span class="font-extrabold text-gray-700 text-sm">PNG</span>
+                </button>
+                <button onclick="processDownload('jpeg')" class="flex flex-col items-center justify-center gap-2 p-5 bg-white hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-2xl transition group shadow-sm hover:shadow-md">
+                    <i class="fa-solid fa-image text-3xl text-gray-400 group-hover:text-primary transition"></i>
+                    <span class="font-extrabold text-gray-700 text-sm">JPG</span>
+                </button>
+                <button onclick="processDownload('svg')" class="flex flex-col items-center justify-center gap-2 p-5 bg-white hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-2xl transition group shadow-sm hover:shadow-md">
+                    <i class="fa-solid fa-bezier-curve text-3xl text-gray-400 group-hover:text-primary transition"></i>
+                    <span class="font-extrabold text-gray-700 text-sm">SVG (Vector)</span>
+                </button>
+                <button onclick="processDownload('pdf')" class="flex flex-col items-center justify-center gap-2 p-5 bg-white hover:bg-indigo-50 hover:border-primary border border-gray-200 rounded-2xl transition group shadow-sm hover:shadow-md">
+                    <i class="fa-solid fa-file-pdf text-3xl text-gray-400 group-hover:text-primary transition"></i>
+                    <span class="font-extrabold text-gray-700 text-sm">PDF Doc</span>
+                </button>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-6 text-center"><i class="fa-solid fa-circle-info"></i> ใช้ <b>SVG</b> หากนำไปขยายใหญ่ในงานสื่อสิ่งพิมพ์</p>
+        </div>
+    </div>
+
+    <!-- Scan Details Modal -->
+    <div id="scan-details-modal" class="hidden fixed inset-0 bg-dark/60 backdrop-blur-sm z-[75] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl relative shadow-2xl fade-in flex flex-col max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center shrink-0 bg-gray-50/50">
+                <div>
+                    <h2 id="scan-details-title" class="text-xl font-extrabold text-gray-900 truncate">รายละเอียดการสแกน</h2>
+                    <p class="text-xs text-green-600 mt-1 font-bold flex items-center gap-1 uppercase tracking-wider"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Live Analytics</p>
+                </div>
+                <button onclick="closeScanDetails()" class="text-gray-400 hover:text-gray-700 bg-white shadow-sm rounded-full w-8 h-8 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 bg-white">
+                <div id="scan-details-loading" class="flex justify-center py-8">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-primary"></i>
+                </div>
+                <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-200">
+                                <th class="p-4 font-bold">วัน-เวลา ที่เข้าชม</th>
+                                <th class="p-4 font-bold">ระบบปฏิบัติการ (OS)</th>
+                                <th class="p-4 font-bold">เบราว์เซอร์</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scan-details-body" class="text-sm divide-y divide-gray-100">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= FIREBASE & APP LOGIC ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -476,7 +576,6 @@
         let quickColor = '#0f172a'; 
         let quickFileObj = null;
 
-        // Ensure safe DOM element retrieval
         const safeEl = (id) => document.getElementById(id);
         
         const elSysLoading = safeEl('sys-loading');
@@ -499,10 +598,10 @@
 
                         if (data.status === 'paused') {
                             if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'ลิงก์นี้ถูกระงับการใช้งานโดยเจ้าของ';
-                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
-                            if(safeEl('sys-progress-bar')) safeEl('sys-progress-bar').classList.add('hidden');
+                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-700', 'text-red-500');
+                            document.querySelector('.animate-spin')?.classList.add('hidden');
                             document.querySelector('.animate-pulse')?.classList.replace('text-primary', 'text-red-500');
-                            document.querySelector('.animate-pulse')?.classList.remove('animate-pulse', 'animate-spin');
+                            document.querySelector('.animate-pulse')?.classList.remove('animate-pulse');
                             return; 
                         }
                         
@@ -530,8 +629,8 @@
                         return;
                     } else {
                         if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'ไม่พบลิงก์ปลายทาง';
-                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-600', 'text-red-500');
-                        if(safeEl('sys-progress-bar')) safeEl('sys-progress-bar').classList.add('hidden');
+                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').classList.replace('text-gray-700', 'text-red-500');
+                        document.querySelector('.animate-spin')?.classList.add('hidden');
                         document.querySelector('.animate-pulse')?.classList.remove('animate-pulse');
                         setTimeout(() => window.location.href = window.location.pathname, 3000);
                         return;
@@ -593,6 +692,10 @@
             if(safeEl('header-title')) safeEl('header-title').innerText = titles[viewId] || '';
 
             if(viewId === 'dashboard' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
+            
+            // Close mobile sidebar on navigate
+            safeEl('sidebar')?.classList.add('-translate-x-full');
+            safeEl('sidebar-overlay')?.classList.add('hidden');
         };
 
         // --- REAL-TIME SYNC ---
@@ -741,6 +844,7 @@
             let storagePath = null;
             let inputData = "";
 
+            // Validate Input
             if (quickType === 'url') {
                 inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
@@ -779,16 +883,28 @@
                     const uploadTask = uploadBytesResumable(fileRef, quickFileObj);
 
                     finalDestination = await new Promise((resolve, reject) => {
+                        // Safety timeout (30 seconds) to prevent infinite loop if rules block upload silently
+                        const uploadTimeout = setTimeout(() => {
+                            uploadTask.cancel();
+                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout) ตรวจสอบอินเทอร์เน็ตหรือกฏ Storage"));
+                        }, 30000);
+
                         uploadTask.on('state_changed', 
                             (snap) => { 
                                 const p = (snap.bytesTransferred / snap.totalBytes) * 100;
                                 if(bar) bar.style.width = `${p}%`; 
                                 if(txt) txt.innerText = `${Math.round(p)}%`;
                             }, 
-                            err => reject(err), 
+                            err => {
+                                clearTimeout(uploadTimeout);
+                                reject(err);
+                            }, 
                             async () => {
+                                clearTimeout(uploadTimeout);
                                 storagePath = fileRef.fullPath;
-                                resolve(await getDownloadURL(uploadTask.snapshot.ref));
+                                try {
+                                    resolve(await getDownloadURL(uploadTask.snapshot.ref));
+                                } catch(e) { reject(e); }
                             }
                         );
                     });
@@ -817,8 +933,9 @@
                 safeEl('quick-advanced')?.classList.add('hidden');
                 
             } catch (error) {
-                console.error(error);
-                showToast("อัปโหลดล้มเหลว (โปรดเช็คสิทธิ์ Storage หรือขนาดไฟล์)", "error");
+                console.error("Upload Error:", error);
+                showToast("อัปโหลดไม่สำเร็จ: " + error.message, "error");
+                if(progressWrap) progressWrap.classList.add('hidden');
             } finally {
                 btn.disabled = false; 
                 if(spin) spin.classList.add('hidden');
@@ -1071,16 +1188,29 @@
             toastTimeout = setTimeout(() => t.classList.add('translate-x-[120%]'), 3500);
         };
 
+        // Mobile Sidebar Logic
+        const toggleSidebar = () => {
+            const sidebar = safeEl('sidebar');
+            const overlay = safeEl('sidebar-overlay');
+            if(!sidebar || !overlay) return;
+            
+            if(sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        };
+        
         const btnMobileMenuEl = safeEl('btn-mobile-menu');
-        if(btnMobileMenuEl) {
-            btnMobileMenuEl.addEventListener('click', () => {
-                const sidebar = document.querySelector('aside');
-                if(!sidebar) return;
-                sidebar.classList.toggle('hidden');
-                if(!sidebar.classList.contains('hidden')) sidebar.classList.add('absolute', 'z-50', 'h-full', 'shadow-2xl');
-                else sidebar.classList.remove('absolute', 'z-50', 'h-full', 'shadow-2xl');
-            });
-        }
+        if(btnMobileMenuEl) btnMobileMenuEl.addEventListener('click', toggleSidebar);
+        
+        const sidebarOverlayEl = safeEl('sidebar-overlay');
+        if(sidebarOverlayEl) sidebarOverlayEl.addEventListener('click', toggleSidebar);
+        
+        const btnCloseSidebarEl = safeEl('btn-close-sidebar');
+        if(btnCloseSidebarEl) btnCloseSidebarEl.addEventListener('click', toggleSidebar);
 
         init();
 
