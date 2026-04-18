@@ -867,7 +867,7 @@
                     // 🔴 USING UPLOADCARE INSTEAD OF FIREBASE STORAGE 🔴
                     finalDestination = await new Promise((resolve, reject) => {
                         const formData = new FormData();
-                        formData.append('UPLOADCARE_PUB_KEY', 'demopublickey'); // This is a public testing key provided by Uploadcare
+                        formData.append('UPLOADCARE_PUB_KEY', '42018535c1fd5a850bf1'); // ใช้ Public Key ของคุณ
                         formData.append('file', quickFileObj);
 
                         const xhr = new XMLHttpRequest();
