@@ -126,7 +126,7 @@
         </main>
     </div>
 
-    <!-- ================= LOGGED IN APP ================= -->
+    <!-- ================= LOGGED IN APP (NO SIDEBAR LAYOUT) ================= -->
     <div id="page-app" class="hidden flex-1 flex flex-col w-full relative">
         
         <!-- System Announcement Banner -->
@@ -166,15 +166,15 @@
                         <i class="fa-solid fa-crown text-amber-500"></i> อัปเกรดเป็น Pro
                     </div>
                     
-                    <!-- Advanced Profile Dropdown -->
-                    <div class="relative group h-full flex items-center">
-                        <button class="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition focus:outline-none">
+                    <!-- Advanced Profile Dropdown (Click Based) -->
+                    <div class="relative h-full flex items-center">
+                        <button id="profile-btn" class="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition focus:outline-none">
                             <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold shadow-sm"><i class="fa-regular fa-user"></i></div>
                             <i class="fa-solid fa-chevron-down text-xs text-gray-400 mr-1"></i>
                         </button>
                         
                         <!-- Dropdown Menu Box -->
-                        <div class="absolute right-0 top-[100%] mt-1 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 transform origin-top-right">
+                        <div id="profile-dropdown" class="absolute right-0 top-[100%] mt-1 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl transition-all duration-200 z-50 transform origin-top-right hidden opacity-0 scale-95">
                             <div class="p-4 border-b border-gray-50 bg-gray-50/50 rounded-t-2xl">
                                 <p class="text-xs text-gray-500 font-medium mb-1">บัญชีของคุณ</p>
                                 <p class="text-sm font-bold text-gray-800 truncate" id="drop-email">email@domain.com</p>
@@ -291,10 +291,10 @@
                             <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
                         </div>
 
-                        <!-- Detailed Progress Bar for PDF (Cloudinary) -->
+                        <!-- Detailed Progress Bar for PDF -->
                         <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl fade-in">
                             <div class="flex justify-between items-end text-sm text-gray-700 font-bold mb-2">
-                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...</span>
+                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ Firebase Storage...</span>
                                 <span id="quick-progress-text" class="text-primary text-xl">0%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-2 shadow-inner">
@@ -641,6 +641,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, updateDoc, increment, onSnapshot, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -656,16 +657,8 @@
         const auth = getAuth(app);
         const googleProvider = new GoogleAuthProvider();
         const db = getFirestore(app);
+        const storage = getStorage(app);
         window.jspdf = window.jspdf || {};
-
-        // --- Cloudinary Config (Signed Uploads & Deletion) ---
-        // ⚠️ สำคัญมาก: คุณต้องเปลี่ยนคำว่า 'ใส่_CLOUD_NAME_ของคุณที่นี่' เป็นชื่อ Cloud Name ของคุณเอง
-        const CLOUDINARY_CLOUD_NAME = 'dm6kuksrr'; 
-        const CLOUDINARY_API_KEY = '613527247357135';
-        
-        // ระบบเข้ารหัสและพรางตาเพื่อป้องกันบอทสแกนหา Secret Key จาก Source Code
-        // (ใช้ atob เพื่อแปลงกลับเป็น Secret Key เวลาที่จะใช้งานจริง)
-        const _getCSec = () => atob('c0gxMmpCQlBNTDJocDhhZkNfVFlGMnhfc0NF');
 
         const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
         const COLLECTION_NAME = "hovercode_assets"; 
@@ -848,7 +841,12 @@
         window.navToSettings = (tab = 'profile') => {
             navTo('settings');
             window.switchSettingTab(tab);
-            document.activeElement?.blur();
+            // Hide dropdown if open by focusing out
+            const profileDropdown = safeEl('profile-dropdown');
+            if(profileDropdown) {
+                profileDropdown.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => { profileDropdown.classList.add('hidden'); }, 200);
+            }
         };
 
         window.switchSettingTab = (tab) => {
@@ -872,6 +870,34 @@
             document.querySelectorAll('.scontent-panel').forEach(p => p.classList.add('hidden'));
             safeEl(`scontent-${tab}`)?.classList.remove('hidden');
         };
+
+        // --- Profile Dropdown Toggle Logic ---
+        const profileBtn = safeEl('profile-btn');
+        const profileDropdown = safeEl('profile-dropdown');
+        if(profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(profileDropdown.classList.contains('hidden')) {
+                    profileDropdown.classList.remove('hidden');
+                    setTimeout(() => {
+                        profileDropdown.classList.remove('opacity-0', 'scale-95');
+                    }, 10);
+                } else {
+                    profileDropdown.classList.add('opacity-0', 'scale-95');
+                    setTimeout(() => {
+                        profileDropdown.classList.add('hidden');
+                    }, 200);
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if(!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                    profileDropdown.classList.add('opacity-0', 'scale-95');
+                    setTimeout(() => {
+                        profileDropdown.classList.add('hidden');
+                    }, 200);
+                }
+            });
+        }
 
         // --- Profile & System Saves ---
         window.saveProfileSettings = async () => {
@@ -971,8 +997,7 @@
                             <span class="bg-indigo-50 text-primary text-[9px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shrink-0">${item.type}</span>
                         </div>
                         
-                        <p class="text-[11px] text-gray-500 truncate font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-100 ${isPaused ? 'line-through' : ''}">${isStatic ? item.destination : shortLink}</p>
-                        ${!isStatic ? `<p class="text-[10px] text-gray-400 truncate mt-1.5 mb-3 font-mono px-1" title="${item.destination}"><i class="fa-solid fa-turn-up fa-rotate-90 mr-1"></i>${item.destination}</p>` : `<div class="mb-4"></div>`}
+                        <p class="text-[11px] text-gray-500 truncate mb-4 font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-100 ${isPaused ? 'line-through' : ''}">${isStatic ? item.destination : shortLink}</p>
                         
                         <div class="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
                             <span class="text-sm text-gray-700 font-bold cursor-pointer hover:text-primary transition flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200" onclick="openScanDetails('${item.id}')">
@@ -980,11 +1005,10 @@
                             </span>
                             
                             <div class="flex gap-1">
-                                <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="คัดลอกลิงก์ย่อ"><i class="fa-regular fa-copy"></i></button>
-                                ${!isStatic ? `<a href="${item.destination}" target="_blank" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="เปิดไฟล์/ลิงก์ต้นฉบับ"><i class="fa-solid fa-arrow-up-right-from-square text-sm"></i></a>` : ''}
+                                <button onclick="window.copyText('${isStatic ? item.destination : shortLink}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="คัดลอกลิงก์"><i class="fa-regular fa-copy"></i></button>
                                 ${!isStatic ? `<button onclick="openEditModal('${item.id}', '${item.destination}', '${item.name}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                                 ${!isStatic ? `<button onclick="toggleQRStatus('${item.id}', '${currentStatus}')" class="w-8 h-8 flex items-center justify-center text-gray-500 ${isPaused ? 'hover:text-green-500 hover:bg-green-50' : 'hover:text-amber-500 hover:bg-amber-50'} rounded-lg transition" title="${isPaused ? 'เปิดใช้งาน' : 'ระงับชั่วคราว'}"><i class="fa-solid ${isPaused ? 'fa-play' : 'fa-pause'}"></i></button>` : ''}
-                                <button onclick="deleteQR('${item.id}', '${item.cloudinaryPublicId || ''}', '${item.cloudinaryResourceType || 'image'}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบถาวร"><i class="fa-solid fa-trash-can"></i></button>
+                                <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบถาวร"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                         </div>
                     </div>
@@ -1047,10 +1071,10 @@
             const sizeText = safeEl('quick-progress-size');
             
             let finalDestination = "";
-            let cloudinaryPublicId = null;
-            let cloudinaryResourceType = null;
+            let storagePath = null;
             let inputData = "";
 
+            // Validate Input
             if (quickType === 'url') {
                 inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
@@ -1063,10 +1087,6 @@
             } else if (quickType === 'pdf') {
                 if(!quickFileObj) return showToast("กรุณาเลือกไฟล์ PDF", "error");
                 inputData = quickFileObj.name;
-                
-                if(CLOUDINARY_CLOUD_NAME === 'ใส่_CLOUD_NAME_ของคุณที่นี่') {
-                    return showToast("กรุณาใส่ Cloud Name ในโค้ดก่อนทำการอัปโหลด PDF", "error");
-                }
             }
 
             let name = safeEl('quick-name')?.value.trim() || '';
@@ -1086,67 +1106,52 @@
                     const bar = safeEl('quick-progress-bar');
                     const txt = safeEl('quick-progress-text');
                     if(progressWrap) progressWrap.classList.remove('hidden');
-                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ (Cloudinary API)...';
+                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ Firebase Storage...';
                     if(bar) bar.style.width = '0%';
                     if(txt) txt.innerText = '0%';
                     if(sizeText) sizeText.innerText = '0.00 MB / 0.00 MB';
 
-                    // 🔴 USING CLOUDINARY WITH SIGNED UPLOAD 🔴
-                    const uploadResult = await new Promise(async (resolve, reject) => {
-                        try {
-                            const timestamp = Math.round((new Date).getTime()/1000);
-                            const signatureStr = `timestamp=${timestamp}${_getCSec()}`;
-                            const encoder = new TextEncoder();
-                            const data = encoder.encode(signatureStr);
-                            const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-                            const hashArray = Array.from(new Uint8Array(hashBuffer));
-                            const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    // 🔴 USING FIREBASE STORAGE FOR PERMANENT FREE STORAGE 🔴
+                    const fileRef = ref(storage, `dynamics_files/${currentUser.uid}/${Date.now()}_${quickFileObj.name}`);
+                    const uploadTask = uploadBytesResumable(fileRef, quickFileObj);
 
-                            const formData = new FormData();
-                            formData.append('file', quickFileObj);
-                            formData.append('api_key', CLOUDINARY_API_KEY);
-                            formData.append('timestamp', timestamp);
-                            formData.append('signature', signature);
+                    finalDestination = await new Promise((resolve, reject) => {
+                        // Safety timeout (30 seconds)
+                        const uploadTimeout = setTimeout(() => {
+                            uploadTask.cancel();
+                            reject(new Error("การเชื่อมต่อขาดหาย (Timeout)"));
+                        }, 30000);
 
-                            const xhr = new XMLHttpRequest();
-                            xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, true);
-                            
-                            xhr.upload.onprogress = (e) => {
-                                if (e.lengthComputable) {
-                                    const p = (e.loaded / e.total) * 100;
-                                    if(bar) bar.style.width = `${p}%`; 
-                                    if(txt) txt.innerText = `${Math.round(p)}%`;
-                                    if(sizeText) {
-                                        const loadedMB = (e.loaded / (1024 * 1024)).toFixed(2);
-                                        const totalMB = (e.total / (1024 * 1024)).toFixed(2);
-                                        sizeText.innerText = `${loadedMB} MB / ${totalMB} MB`;
-                                    }
+                        uploadTask.on('state_changed', 
+                            (snap) => { 
+                                const p = (snap.bytesTransferred / snap.totalBytes) * 100;
+                                if(bar) bar.style.width = `${p}%`; 
+                                if(txt) txt.innerText = `${Math.round(p)}%`;
+                                
+                                // Show exact MB size
+                                if(sizeText) {
+                                    const loadedMB = (snap.bytesTransferred / (1024 * 1024)).toFixed(2);
+                                    const totalMB = (snap.totalBytes / (1024 * 1024)).toFixed(2);
+                                    sizeText.innerText = `${loadedMB} MB / ${totalMB} MB`;
                                 }
-                            };
-                            
-                            xhr.onload = () => {
-                                if (xhr.status === 200) {
-                                    const response = JSON.parse(xhr.responseText);
-                                    resolve({
-                                        url: response.secure_url,
-                                        public_id: response.public_id,
-                                        resource_type: response.resource_type
-                                    });
+                            }, 
+                            err => {
+                                clearTimeout(uploadTimeout);
+                                if (err.code === 'storage/unauthorized') {
+                                    reject(new Error("ไปที่ Firebase > Storage > กฎ (Rules) แล้วแก้เป็น allow read, write: if true; ก่อนครับ!"));
                                 } else {
-                                    reject(new Error('อัปโหลดล้มเหลว (' + xhr.status + ') ตรวจสอบ Cloud Name'));
+                                    reject(err);
                                 }
-                            };
-                            
-                            xhr.onerror = () => reject(new Error('เกิดข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต'));
-                            xhr.send(formData);
-                        } catch(e) {
-                            reject(e);
-                        }
+                            }, 
+                            async () => {
+                                clearTimeout(uploadTimeout);
+                                storagePath = fileRef.fullPath;
+                                try {
+                                    resolve(await getDownloadURL(uploadTask.snapshot.ref));
+                                } catch(e) { reject(e); }
+                            }
+                        );
                     });
-                    
-                    finalDestination = uploadResult.url;
-                    cloudinaryPublicId = uploadResult.public_id;
-                    cloudinaryResourceType = uploadResult.resource_type;
                 }
 
                 const shortCode = (quickType !== 'text') ? generateShortCode(4) : null;
@@ -1155,10 +1160,7 @@
                     userId: currentUser.uid, userEmail: currentUser.email,
                     type: quickType, name: name, destination: finalDestination,
                     shortCode: shortCode, color: quickColor, bgColor: '#ffffff', margin: 2, ecc: 'M',
-                    status: 'active', scans: 0, 
-                    cloudinaryPublicId: cloudinaryPublicId || null,
-                    cloudinaryResourceType: cloudinaryResourceType || 'image',
-                    createdAt: Date.now()
+                    status: 'active', scans: 0, storagePath: storagePath, createdAt: Date.now()
                 });
                 
                 showToast("สร้าง Dynamic QR สำเร็จ!");
@@ -1178,7 +1180,7 @@
             } catch (error) {
                 console.error("Upload Error:", error);
                 if(statusText) statusText.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>อัปโหลดไม่สำเร็จ: ${error.message}`;
-                showToast("อัปโหลดไม่สำเร็จ โปรดดูข้อความด้านล่าง", "error");
+                showToast(error.message, "error");
             } finally {
                 btn.disabled = false; 
                 if(spin) spin.classList.add('hidden');
@@ -1230,41 +1232,12 @@
             });
         }
 
-        async function deleteCloudinaryFile(publicId, resourceType = 'image') {
-            const timestamp = Math.round((new Date).getTime()/1000);
-            const signatureStr = `public_id=${publicId}&timestamp=${timestamp}${_getCSec()}`;
-            const encoder = new TextEncoder();
-            const data = encoder.encode(signatureStr);
-            const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-            const formData = new FormData();
-            formData.append('public_id', publicId);
-            formData.append('api_key', CLOUDINARY_API_KEY);
-            formData.append('timestamp', timestamp);
-            formData.append('signature', signature);
-
-            return new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/destroy`, true);
-                xhr.onload = () => {
-                    if (xhr.status === 200) resolve();
-                    else reject(new Error(xhr.statusText));
-                };
-                xhr.onerror = () => reject(new Error('Network error'));
-                xhr.send(formData);
-            });
-        }
-
-        window.deleteQR = async (id, publicId, resourceType) => {
-            if(!confirm("ลบ QR Code นี้อย่างถาวร? ลิงก์และไฟล์บนเซิร์ฟเวอร์จะถูกลบทิ้ง")) return;
+        window.deleteQR = async (id, storagePath) => {
+            if(!confirm("ลบ QR Code นี้อย่างถาวร? ลิงก์จะไม่สามารถใช้การได้อีก")) return;
             try {
-                if (publicId && CLOUDINARY_CLOUD_NAME !== 'ใส่_CLOUD_NAME_ของคุณที่นี่') {
-                    await deleteCloudinaryFile(publicId, resourceType).catch(e => console.log("Cloudinary del skip:", e));
-                }
+                if (storagePath) await deleteObject(ref(storage, storagePath)).catch(e=>{});
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
-                showToast("ลบข้อมูลและไฟล์สำเร็จ");
+                showToast("ลบข้อมูลสำเร็จ");
             } catch (error) { showToast("ลบล้มเหลว", "error"); }
         };
 
@@ -1408,7 +1381,7 @@
                         <td class="p-5 text-sm font-medium text-primary">${item.userEmail}</td>
                         <td class="p-5 font-black text-gray-900">${item.scans || 0}</td>
                         <td class="p-5 text-center">
-                            <button onclick="deleteQR('${item.id}', '${item.cloudinaryPublicId || ''}', '${item.cloudinaryResourceType || 'image'}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="deleteQR('${item.id}', '${item.storagePath || ''}')" class="text-red-500 hover:bg-red-50 w-8 h-8 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -1436,7 +1409,7 @@
                 const spinner = safeEl('login-spinner');
                 if(spinner) spinner.classList.remove('hidden');
                 try { await signInWithPopup(auth, googleProvider); } 
-                catch (error) { showToast("เข้าสู่ระบบล้มเหลว (โดเมนนี้อาจต้องตั้งค่าใน Firebase)", "error"); }
+                catch (error) { showToast("เข้าสู่ระบบล้มเหลว", "error"); }
                 finally { if(spinner) spinner.classList.add('hidden'); }
             });
         }
