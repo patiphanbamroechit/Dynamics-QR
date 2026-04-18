@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NexusQR - Dynamic Generator</title>
-    <!-- Favicon (Website Icon) -->
-    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/7782/7782672.png" type="image/png">
+    <!-- Favicon (Website Icon - QR Code SVG) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'><path fill='%238b5cf6' d='M0 80C0 53.5 21.5 32 48 32h96c26.5 0 48 21.5 48 48v96c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V80zM64 96v64h64V96H64zm0 256v64h64v-64H64zm-16-48c-26.5 0-48 21.5-48 48v96c0 26.5 21.5 48 48 48h96c26.5 0 48-21.5 48-48v-96c0-26.5-21.5-48-48-48H48zm208-224v64h64V96h-64zm-16-16c0-26.5 21.5-48 48-48h96c26.5 0 48 21.5 48 48v96c0 26.5-21.5 48-48 48h-96c-26.5 0-48-21.5-48-48V80zM352 352h-32v-32h-32v32h-32v32h32v32h32v-32h32v-32zm64-64h-32v32h-32v32h32v32h32v-32h32v-32h-32v-32zm0 128h-32v32h-32v32h32v32h32v-32h32v-32h-32v-32zm-64-64h-32v32h-32v32h32v32h32v-32h32v-32h-32v-32z'/></svg>" type="image/svg+xml">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,8 +13,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- QRCode.js Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- QRCode.js Library (Updated to robust CDN to prevent "QRCode is not defined") -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
     <!-- jsPDF Library for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
@@ -126,7 +126,7 @@
         </main>
     </div>
 
-    <!-- ================= LOGGED IN APP ================= -->
+    <!-- ================= LOGGED IN APP (NO SIDEBAR LAYOUT) ================= -->
     <div id="page-app" class="hidden flex-1 flex flex-col w-full relative">
         
         <!-- System Announcement Banner -->
@@ -291,10 +291,10 @@
                             <button onclick="document.getElementById('quick-advanced').classList.toggle('hidden')" class="text-sm text-gray-500 hover:text-primary font-bold bg-gray-100 hover:bg-indigo-50 px-4 py-1.5 rounded-full transition"><i class="fa-solid fa-sliders mr-1"></i> ตั้งค่าเพิ่มเติม</button>
                         </div>
 
-                        <!-- Detailed Progress Bar -->
+                        <!-- Detailed Progress Bar for PDF -->
                         <div id="quick-progress-wrap" class="w-full mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-xl fade-in">
                             <div class="flex justify-between items-end text-sm text-gray-700 font-bold mb-2">
-                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...</span>
+                                <span id="quick-progress-status-text" class="flex items-center"><i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ไปที่ Server...</span>
                                 <span id="quick-progress-text" class="text-primary text-xl">0%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-2 shadow-inner">
@@ -1121,6 +1121,7 @@
             let cloudinaryResourceType = null;
             let inputData = "";
 
+            // Validate Input
             if (quickType === 'url') {
                 inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
@@ -1133,6 +1134,7 @@
             } else if (quickType === 'file') {
                 if(!quickFileObj) return showToast("กรุณาเลือกไฟล์เพื่ออัปโหลด", "error");
                 inputData = quickFileObj.name;
+                
                 if(CLOUDINARY_CLOUD_NAME === 'ใส่_CLOUD_NAME_ของคุณที่นี่') {
                     return showToast("กรุณาตรวจสอบ Cloud Name ในโค้ด", "error");
                 }
@@ -1155,7 +1157,7 @@
                     const bar = safeEl('quick-progress-bar');
                     const txt = safeEl('quick-progress-text');
                     if(progressWrap) progressWrap.classList.remove('hidden');
-                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์...';
+                    if(statusText) statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary mr-2"></i>กำลังอัปโหลดไฟล์ (Cloudinary)...';
                     if(bar) bar.style.width = '0%';
                     if(txt) txt.innerText = '0%';
                     if(sizeText) sizeText.innerText = '0.00 MB / 0.00 MB';
@@ -1227,6 +1229,7 @@
                 
                 showToast("สร้าง Dynamic QR สำเร็จ!");
                 
+                // Reset form
                 if(safeEl('quick-url')) safeEl('quick-url').value = '';
                 if(safeEl('quick-text')) safeEl('quick-text').value = '';
                 if(safeEl('quick-name')) safeEl('quick-name').value = '';
@@ -1400,6 +1403,12 @@
 
             showToast(`กำลังเตรียมไฟล์ ${format.toUpperCase()}...`, "info");
             
+            // Check if QRCode library is loaded to prevent "QRCode is not defined" error
+            if (typeof window.QRCode === 'undefined') {
+                closeDownloadModal();
+                return showToast("ไม่สามารถโหลดเครื่องมือสร้าง QR ได้ โปรดตรวจสอบอินเทอร์เน็ต", "error");
+            }
+            
             const triggerDownload = (url, name) => {
                 try {
                     const link = document.createElement('a');
@@ -1409,15 +1418,15 @@
                     document.body.appendChild(link); 
                     link.click(); 
                     document.body.removeChild(link);
-                    showToast("ดาวน์โหลดไฟล์สำเร็จ!", "success");
+                    showToast("ดาวน์โหลดสำเร็จ!", "success");
                 } catch(e) {
-                    showToast("เบราว์เซอร์บล็อกการดาวน์โหลด โปรดลองนำโค้ดไปรันบนเว็บจริง", "error");
+                    showToast("เบราว์เซอร์บล็อกการดาวน์โหลด โปรดลองบนเว็บจริง", "error");
                 }
             };
             
             try {
                 if(format === 'svg') {
-                    QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
+                    window.QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
                         if(err) { closeDownloadModal(); return showToast("สร้าง SVG ไม่สำเร็จ", "error"); }
                         const url = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
                         triggerDownload(url, `${filename}.svg`);
@@ -1425,7 +1434,7 @@
                         closeDownloadModal();
                     });
                 } else if (format === 'pdf') {
-                    QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                    window.QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
                         if(err) { closeDownloadModal(); return showToast("สร้างไฟล์ไม่สำเร็จ", "error"); }
                         try {
                             if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF Library ไม่พร้อมใช้งาน");
@@ -1444,7 +1453,7 @@
                     });
                 } else {
                     const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-                    QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                    window.QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
                         if(err) { closeDownloadModal(); return showToast("สร้างรูปภาพไม่สำเร็จ", "error"); }
                         triggerDownload(url, `${filename}.${format}`);
                         closeDownloadModal();
