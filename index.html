@@ -597,7 +597,7 @@
                     <span class="font-extrabold text-gray-700 text-sm">PDF Doc</span>
                 </button>
             </div>
-            <p class="text-[11px] text-gray-400 mt-6 text-center"><i class="fa-solid fa-circle-info"></i> ใช้ <b>SVG</b> หากนำไปขยายใหญ่ในงานสื่อสิ่งพิมพ์</p>
+            <p class="text-[11px] text-gray-400 mt-6 text-center"><i class="fa-solid fa-circle-info"></i> หากไม่สามารถดาวน์โหลดได้ ให้บันทึกรูปภาพโดยตรงแทน</p>
         </div>
     </div>
 
@@ -708,8 +708,7 @@
                             return; 
                         }
                         
-                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'กำลังส่งต่อไปยังปลายทาง...';
-
+                        // Parse User-Agent for detailed tracking
                         const ua = navigator.userAgent;
                         let os = "อื่นๆ";
                         if (ua.indexOf("Win") !== -1) os = "Windows";
@@ -728,6 +727,47 @@
                             await addDoc(collection(db, "hovercode_analytics"), { qrId: targetDoc.id, timestamp: Date.now(), os: os, browser: browser });
                         } catch(e) {}
                         await updateDoc(doc(db, COLLECTION_NAME, targetDoc.id), { scans: increment(1) }).catch(e => {});
+
+                        // ===== NEW: FILE DOWNLOAD PAGE LOGIC =====
+                        if (data.type === 'file') {
+                            if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'เตรียมไฟล์ของคุณ...';
+                            
+                            setTimeout(() => {
+                                safeEl('sys-loading')?.classList.add('hidden');
+                                safeEl('page-landing')?.classList.add('hidden');
+                                safeEl('page-app')?.classList.add('hidden');
+                                
+                                let downloadUrl = data.destination;
+                                // Add Cloudinary Force Download flag (fl_attachment) if possible
+                                if (downloadUrl.includes('cloudinary.com') && downloadUrl.includes('/upload/')) {
+                                    downloadUrl = downloadUrl.replace('/upload/', '/upload/fl_attachment/');
+                                }
+                                
+                                const dlPage = document.createElement('div');
+                                dlPage.className = 'fixed inset-0 bg-slate-50 z-[200] flex flex-col items-center justify-center p-4';
+                                dlPage.innerHTML = `
+                                    <div class="bg-white p-8 md:p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-gray-200 fade-in relative overflow-hidden">
+                                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary"></div>
+                                        <div class="w-24 h-24 bg-indigo-50 text-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                            <i class="fa-solid fa-file-arrow-down text-5xl"></i>
+                                        </div>
+                                        <h2 class="text-2xl font-extrabold text-gray-900 mb-3">ไฟล์พร้อมดาวน์โหลด</h2>
+                                        <p class="text-gray-500 mb-8 truncate px-4 bg-gray-50 py-2 rounded-lg font-mono text-sm border border-gray-100">${data.name || 'document_file'}</p>
+                                        
+                                        <a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" onclick="setTimeout(() => window.close(), 1000)" class="block w-full bg-gradient-to-r from-primary to-secondary text-white py-4 rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-1 transition-all">
+                                            <i class="fa-solid fa-download mr-2"></i> ดาวน์โหลดไฟล์
+                                        </a>
+                                        
+                                        <p class="text-xs text-gray-400 mt-6"><i class="fa-solid fa-shield-check text-green-500 mr-1"></i> สแกนความปลอดภัยและให้บริการโดย NexusQR</p>
+                                    </div>
+                                `;
+                                document.body.appendChild(dlPage);
+                            }, 800);
+                            return;
+                        }
+                        // =========================================
+
+                        if(safeEl('sys-loading-text')) safeEl('sys-loading-text').innerText = 'กำลังส่งต่อไปยังปลายทาง...';
                         window.location.replace(data.destination);
                         return;
                     } else {
@@ -806,14 +846,7 @@
             });
         }
 
-        function generateShortCode(length = 4) {
-            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            let result = '';
-            for (let i = 0; i < length; i++) result += chars[Math.floor(Math.random() * chars.length)];
-            return result;
-        }
-
-        // --- Navigation ---
+        // --- Core Functions ---
         window.navTo = (viewId) => {
             activeView = viewId;
             document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
@@ -843,10 +876,13 @@
             if(viewId === 'dashboard' || viewId === 'analytics' || viewId === 'admin') subscribeToData(viewId);
         };
 
+        window.showFeatureNotAvailable = () => {
+            showToast("ฟีเจอร์นี้อยู่ระหว่างการพัฒนา!", "info");
+        };
+
         window.navToSettings = (tab = 'profile') => {
             navTo('settings');
             window.switchSettingTab(tab);
-            // Hide dropdown if open by focusing out
             const profileDropdown = safeEl('profile-dropdown');
             if(profileDropdown) {
                 profileDropdown.classList.add('opacity-0', 'scale-95');
@@ -876,7 +912,7 @@
             safeEl(`scontent-${tab}`)?.classList.remove('hidden');
         };
 
-        // --- Profile Dropdown Toggle Logic ---
+        // Profile Dropdown Toggle Logic
         const profileBtn = safeEl('profile-btn');
         const profileDropdown = safeEl('profile-dropdown');
         if(profileBtn && profileDropdown) {
@@ -904,7 +940,7 @@
             });
         }
 
-        // --- Profile & System Saves ---
+        // Profile & System Saves
         window.saveProfileSettings = async () => {
             if(!currentUser) return;
             const newName = safeEl('set-profile-name')?.value.trim();
@@ -931,7 +967,7 @@
             }
         };
 
-        // --- REAL-TIME SYNC (QR Data) ---
+        // REAL-TIME SYNC
         function subscribeToData(viewId) {
             if (!currentUser) return;
             if (itemsUnsubscribe) { itemsUnsubscribe(); itemsUnsubscribe = null; }
@@ -961,7 +997,7 @@
             });
         }
 
-        // --- Render Modern Cards ---
+        // Render Dashboard Cards
         function renderQRList() {
             const grid = safeEl('qr-grid');
             if(!grid) return;
@@ -980,9 +1016,7 @@
                 
                 const currentStatus = item.status || 'active';
                 const isPaused = currentStatus === 'paused';
-                
                 const typeIcon = item.type === 'url' ? 'fa-link' : item.type === 'file' ? 'fa-file' : 'fa-font';
-                
                 const fColor = (item.color || '#0f172a').replace('#', '');
                 const thumbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(renderData)}&color=${fColor}&bgcolor=ffffff&margin=2`;
 
@@ -1025,7 +1059,7 @@
             }).join('');
         }
 
-        // --- Quick Create Logic ---
+        // Quick Create Logic
         window.selectQuickType = (type) => {
             quickType = type;
             ['url', 'file', 'text'].forEach(t => {
@@ -1044,11 +1078,8 @@
                 }
             });
             
-            // Adjust title based on type
             if(safeEl('quick-file-name')) {
-                if(type === 'file') {
-                    safeEl('quick-file-name').innerText = 'คลิกเพื่อเลือกไฟล์ (PDF, รูปภาพ ฯลฯ)';
-                }
+                if(type === 'file') safeEl('quick-file-name').innerText = 'คลิกเพื่อเลือกไฟล์ (PDF, รูปภาพ ฯลฯ)';
             }
         };
 
@@ -1090,7 +1121,6 @@
             let cloudinaryResourceType = null;
             let inputData = "";
 
-            // Validate Input
             if (quickType === 'url') {
                 inputData = safeEl('quick-url')?.value.trim();
                 if(!inputData) return showToast("กรุณาใส่ลิงก์", "error");
@@ -1103,7 +1133,6 @@
             } else if (quickType === 'file') {
                 if(!quickFileObj) return showToast("กรุณาเลือกไฟล์เพื่ออัปโหลด", "error");
                 inputData = quickFileObj.name;
-                
                 if(CLOUDINARY_CLOUD_NAME === 'ใส่_CLOUD_NAME_ของคุณที่นี่') {
                     return showToast("กรุณาตรวจสอบ Cloud Name ในโค้ด", "error");
                 }
@@ -1131,13 +1160,11 @@
                     if(txt) txt.innerText = '0%';
                     if(sizeText) sizeText.innerText = '0.00 MB / 0.00 MB';
 
-                    // 🔴 USING CLOUDINARY WITH SIGNED UPLOAD 🔴
                     const uploadResult = await new Promise(async (resolve, reject) => {
                         try {
                             const timestamp = Math.round((new Date).getTime()/1000);
                             const folderName = currentUser.email || 'anonymous_folder';
                             
-                            // Generate Signature (SHA-1) using SubtleCrypto
                             const signatureStr = `folder=${folderName}&timestamp=${timestamp}${_getCSec()}`;
                             const encoder = new TextEncoder();
                             const data = encoder.encode(signatureStr);
@@ -1153,7 +1180,6 @@
                             formData.append('signature', signature);
 
                             const xhr = new XMLHttpRequest();
-                            // For generic files (pdf, etc), use 'auto' to let Cloudinary detect the best resource type
                             xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, true);
                             
                             xhr.upload.onprogress = (e) => {
@@ -1172,21 +1198,14 @@
                             xhr.onload = () => {
                                 if (xhr.status === 200) {
                                     const response = JSON.parse(xhr.responseText);
-                                    resolve({
-                                        url: response.secure_url,
-                                        public_id: response.public_id,
-                                        resource_type: response.resource_type
-                                    });
+                                    resolve({ url: response.secure_url, public_id: response.public_id, resource_type: response.resource_type });
                                 } else {
                                     reject(new Error('อัปโหลดล้มเหลว (' + xhr.status + ') ตรวจสอบ Cloud Name'));
                                 }
                             };
-                            
                             xhr.onerror = () => reject(new Error('เกิดข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต'));
                             xhr.send(formData);
-                        } catch(e) {
-                            reject(e);
-                        }
+                        } catch(e) { reject(e); }
                     });
                     
                     finalDestination = uploadResult.url;
@@ -1208,7 +1227,6 @@
                 
                 showToast("สร้าง Dynamic QR สำเร็จ!");
                 
-                // Reset form
                 if(safeEl('quick-url')) safeEl('quick-url').value = '';
                 if(safeEl('quick-text')) safeEl('quick-text').value = '';
                 if(safeEl('quick-name')) safeEl('quick-name').value = '';
@@ -1230,7 +1248,6 @@
             }
         };
 
-        // --- Core Functions ---
         window.toggleQRStatus = async (id, currentStatus) => {
             const newStatus = currentStatus === 'active' ? 'paused' : 'active';
             try {
@@ -1292,7 +1309,6 @@
 
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                // Ensure we call the correct resource_type endpoint (image, raw, video)
                 xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/destroy`, true);
                 xhr.onload = () => {
                     if (xhr.status === 200) resolve();
@@ -1307,7 +1323,6 @@
             if(!confirm("ลบ QR Code นี้อย่างถาวร? ลิงก์และไฟล์บนเซิร์ฟเวอร์จะถูกลบทิ้ง")) return;
             try {
                 if (publicId && CLOUDINARY_CLOUD_NAME !== 'ใส่_CLOUD_NAME_ของคุณที่นี่') {
-                    // Try to delete from cloudinary to clean up space
                     await deleteCloudinaryFile(publicId, resourceType).catch(e => console.log("Cloudinary del skip:", e));
                 }
                 await deleteDoc(doc(db, COLLECTION_NAME, id));
@@ -1322,7 +1337,6 @@
             document.body.removeChild(textArea);
         };
 
-        // --- Scan details ---
         window.openScanDetails = (id) => {
             const item = allItems.find(i => i.id === id);
             if(!item) return;
@@ -1366,7 +1380,7 @@
             return '<i class="fa-solid fa-globe text-gray-400 w-5 text-center text-lg"></i>';
         }
 
-        // --- Downloads ---
+        // --- FIXED QR DOWNLOADS ---
         window.openDownloadModal = (id) => {
             currentDownloadItem = allItems.find(i => i.id === id);
             if(currentDownloadItem) {
@@ -1376,49 +1390,69 @@
         };
         window.closeDownloadModal = () => safeEl('download-modal')?.classList.add('hidden');
 
-        window.processDownload = (format) => {
+        window.processDownload = async (format) => {
             if(!currentDownloadItem) return;
             const item = currentDownloadItem;
             const isStatic = item.type === 'text';
             const renderData = isStatic ? item.destination : `${window.location.origin}${window.location.pathname}?s=${item.shortCode}`;
-            const fColor = item.color || '#000000';
+            const fColor = item.color || '#0f172a';
             const filename = `QR_${(item.name || 'nexus').replace(/[^a-zA-Z0-9ก-๙]/g, '_')}`;
 
-            showToast(`เตรียมไฟล์ ${format.toUpperCase()}...`);
+            showToast(`กำลังเตรียมไฟล์ ${format.toUpperCase()}...`, "info");
             
             const triggerDownload = (url, name) => {
-                const link = document.createElement('a');
-                link.href = url; link.download = name;
-                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                try {
+                    const link = document.createElement('a');
+                    link.href = url; 
+                    link.download = name;
+                    link.target = '_blank';
+                    document.body.appendChild(link); 
+                    link.click(); 
+                    document.body.removeChild(link);
+                    showToast("ดาวน์โหลดไฟล์สำเร็จ!", "success");
+                } catch(e) {
+                    showToast("เบราว์เซอร์บล็อกการดาวน์โหลด โปรดลองนำโค้ดไปรันบนเว็บจริง", "error");
+                }
             };
             
-            if(format === 'svg') {
-                QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
-                    if(err) return showToast("สร้าง SVG ไม่สำเร็จ", "error");
-                    const url = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
-                    triggerDownload(url, `${filename}.svg`);
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    closeDownloadModal();
-                });
-            } else if (format === 'pdf') {
-                QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
-                    if(err) return showToast("สร้างไฟล์ไม่สำเร็จ", "error");
-                    try {
-                        const doc = new window.jspdf.jsPDF();
-                        doc.setFontSize(20); doc.text(item.name || 'QR Code', 105, 30, null, null, "center");
-                        doc.addImage(url, 'PNG', 35, 50, 140, 140);
-                        doc.setFontSize(10); doc.setTextColor(100); doc.text(`Link: ${renderData}`, 105, 200, null, null, "center");
-                        doc.save(`${filename}.pdf`); 
+            try {
+                if(format === 'svg') {
+                    QRCode.toString(renderData, { type: 'svg', margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, string) => {
+                        if(err) { closeDownloadModal(); return showToast("สร้าง SVG ไม่สำเร็จ", "error"); }
+                        const url = URL.createObjectURL(new Blob([string], {type: "image/svg+xml;charset=utf-8"}));
+                        triggerDownload(url, `${filename}.svg`);
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
                         closeDownloadModal();
-                    } catch(e) { showToast("เกิดข้อผิดพลาดในการสร้าง PDF", "error"); }
-                });
-            } else {
-                const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-                QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
-                    if(err) return showToast("สร้างรูปภาพไม่สำเร็จ", "error");
-                    triggerDownload(url, `${filename}.${format}`);
-                    closeDownloadModal();
-                });
+                    });
+                } else if (format === 'pdf') {
+                    QRCode.toDataURL(renderData, { type: 'image/png', width: 800, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                        if(err) { closeDownloadModal(); return showToast("สร้างไฟล์ไม่สำเร็จ", "error"); }
+                        try {
+                            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF Library ไม่พร้อมใช้งาน");
+                            const doc = new window.jspdf.jsPDF();
+                            doc.setFontSize(20); doc.text(item.name || 'QR Code', 105, 30, null, null, "center");
+                            doc.addImage(url, 'PNG', 35, 50, 140, 140);
+                            doc.setFontSize(10); doc.setTextColor(100); doc.text(`Link: ${renderData}`, 105, 200, null, null, "center");
+                            doc.save(`${filename}.pdf`); 
+                            showToast("ดาวน์โหลด PDF สำเร็จ!", "success");
+                        } catch(e) { 
+                            console.error(e);
+                            showToast("เกิดข้อผิดพลาดในการสร้าง PDF", "error"); 
+                        } finally {
+                            closeDownloadModal();
+                        }
+                    });
+                } else {
+                    const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+                    QRCode.toDataURL(renderData, { type: mimeType, width: 1000, margin: 2, color: { dark: fColor, light: '#ffffff' } }, (err, url) => {
+                        if(err) { closeDownloadModal(); return showToast("สร้างรูปภาพไม่สำเร็จ", "error"); }
+                        triggerDownload(url, `${filename}.${format}`);
+                        closeDownloadModal();
+                    });
+                }
+            } catch(error) {
+                closeDownloadModal();
+                showToast("เกิดข้อผิดพลาด: " + error.message, "error");
             }
         };
 
