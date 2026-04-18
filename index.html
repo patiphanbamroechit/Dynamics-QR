@@ -1,0 +1,646 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { QrCode, Link as LinkIcon, FileUp, Shield, LogOut, Copy, Trash2, ExternalLink, Loader2, CheckCircle2, AlertCircle, LayoutDashboard } from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAVMcf_f3ytnpPptd5bTaOjyGblG7Vw0AA",
+  authDomain: "dynamics-qr.firebaseapp.com",
+  projectId: "dynamics-qr",
+  storageBucket: "dynamics-qr.firebasestorage.app",
+  messagingSenderId: "11257712570",
+  appId: "1:11257712570:web:8fc95a48c55ee206105783",
+  measurementId: "G-X04VY6WJFS"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// --- Constants ---
+const ADMIN_EMAIL = "patiphanbomroechit@gmail.com";
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const COLLECTION_NAME = "dynamic_assets";
+
+export default function App() {
+  // Global State
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+
+  // Dashboard State
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [items, setItems] = useState([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+
+  // Form States
+  const [qrData, setQrData] = useState('');
+  const [qrName, setQrName] = useState('');
+  
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkName, setLinkName] = useState('');
+  
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Redirect Logic (If accessed via short link)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shortCode = urlParams.get('s');
+    
+    if (shortCode) {
+      handleRedirect(shortCode);
+    }
+  }, []);
+
+  const handleRedirect = async (code) => {
+    try {
+      const q = query(collection(db, COLLECTION_NAME), where("type", "==", "link"), where("shortCode", "==", code));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        window.location.href = data.url;
+      } else {
+        showToast("ไม่พบลิงก์ที่คุณต้องการ", "error");
+      }
+    } catch (error) {
+      console.error("Redirect Error:", error);
+    }
+  };
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAdmin(currentUser?.email === ADMIN_EMAIL);
+      setAuthLoading(false);
+      if (currentUser) {
+        fetchItems(currentUser.uid, currentUser.email === ADMIN_EMAIL);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000);
+  };
+
+  const fetchItems = async (uid, isUserAdmin) => {
+    setIsLoadingItems(true);
+    try {
+      // If admin and viewing admin tab, fetch all. Otherwise fetch user's items.
+      // Note: For simplicity and avoiding complex indexes, we fetch all and filter in memory if admin, 
+      // or just fetch user's items using a simple where clause.
+      let q;
+      if (isUserAdmin && activeTab === 'admin') {
+         const collRef = collection(db, COLLECTION_NAME);
+         const snapshot = await getDocs(collRef);
+         const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         // Sort locally
+         setItems(fetchedItems.sort((a, b) => b.createdAt - a.createdAt));
+      } else {
+         q = query(collection(db, COLLECTION_NAME), where("userId", "==", uid));
+         const snapshot = await getDocs(q);
+         const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         setItems(fetchedItems.sort((a, b) => b.createdAt - a.createdAt));
+      }
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      showToast("เกิดข้อผิดพลาดในการโหลดข้อมูล", "error");
+    } finally {
+      setIsLoadingItems(false);
+    }
+  };
+
+  // Re-fetch when tab changes (especially for Admin)
+  useEffect(() => {
+    if (user) {
+      fetchItems(user.uid, isAdmin);
+    }
+  }, [activeTab]);
+
+
+  // --- Action Handlers ---
+
+  const generateRandomCode = () => Math.random().toString(36).substring(2, 8);
+
+  const handleCreateQR = async (e) => {
+    e.preventDefault();
+    if (!qrData || !qrName) return;
+    
+    try {
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
+      
+      await addDoc(collection(db, COLLECTION_NAME), {
+        userId: user.uid,
+        userEmail: user.email,
+        type: 'qr',
+        name: qrName,
+        url: qrImageUrl, // The QR image
+        originalData: qrData,
+        createdAt: Date.now()
+      });
+      
+      showToast("สร้างคิวอาร์โค้ดสำเร็จ!");
+      setQrData('');
+      setQrName('');
+      fetchItems(user.uid, isAdmin);
+      setActiveTab('dashboard');
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+  };
+
+  const handleCreateLink = async (e) => {
+    e.preventDefault();
+    if (!linkUrl || !linkName) return;
+    
+    let validUrl = linkUrl;
+    if (!/^https?:\/\//i.test(validUrl)) {
+        validUrl = 'http://' + validUrl;
+    }
+
+    try {
+      const shortCode = generateRandomCode();
+      const baseUrl = window.location.origin + window.location.pathname;
+      const finalShortLink = `${baseUrl}?s=${shortCode}`;
+
+      await addDoc(collection(db, COLLECTION_NAME), {
+        userId: user.uid,
+        userEmail: user.email,
+        type: 'link',
+        name: linkName,
+        url: validUrl, // Original URL
+        shortCode: shortCode,
+        shortLink: finalShortLink,
+        createdAt: Date.now()
+      });
+      
+      showToast("สร้างลิงก์ย่อสำเร็จ!");
+      setLinkUrl('');
+      setLinkName('');
+      fetchItems(user.uid, isAdmin);
+      setActiveTab('dashboard');
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+  };
+
+  const handleUploadFile = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+
+    if (uploadFile.size > MAX_FILE_SIZE_BYTES) {
+      showToast(`ขนาดไฟล์เกินที่กำหนด (${MAX_FILE_SIZE_MB}MB)`, "error");
+      return;
+    }
+
+    setIsUploading(true);
+    const fileRef = ref(storage, `uploads/${user.uid}/${Date.now()}_${uploadFile.name}`);
+    const uploadTask = uploadBytesResumable(fileRef, uploadFile);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      }, 
+      (error) => {
+        setIsUploading(false);
+        showToast("อัปโหลดล้มเหลว: " + error.message, "error");
+      }, 
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        
+        // Save to Firestore
+        await addDoc(collection(db, COLLECTION_NAME), {
+          userId: user.uid,
+          userEmail: user.email,
+          type: 'file',
+          name: uploadFile.name,
+          url: downloadURL,
+          storagePath: fileRef.fullPath,
+          size: uploadFile.size,
+          fileType: uploadFile.type,
+          createdAt: Date.now()
+        });
+
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadFile(null);
+        showToast("อัปโหลดไฟล์สำเร็จ!");
+        fetchItems(user.uid, isAdmin);
+        setActiveTab('dashboard');
+      }
+    );
+  };
+
+  const handleDelete = async (item) => {
+    // Custom confirm via simple state could be added, but for iframe safety we perform directly
+    // Ideally use a modal, but keeping it direct for simplicity in single file
+    try {
+      // If it's a file, delete from storage first
+      if (item.type === 'file' && item.storagePath) {
+        const fileRef = ref(storage, item.storagePath);
+        await deleteObject(fileRef).catch(e => console.log("Storage delete error (might be already deleted)", e));
+      }
+      
+      // Delete from Firestore
+      await deleteDoc(doc(db, COLLECTION_NAME, item.id));
+      showToast("ลบข้อมูลสำเร็จ!");
+      fetchItems(user.uid, isAdmin);
+    } catch (error) {
+      showToast("ลบล้มเหลว: " + error.message, "error");
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast("คัดลอกลงคลิปบอร์ดแล้ว");
+    }).catch(err => {
+      // Fallback for iframe environments
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast("คัดลอกลงคลิปบอร์ดแล้ว");
+      } catch (e) {
+        showToast("ไม่สามารถคัดลอกได้", "error");
+      }
+      document.body.removeChild(textArea);
+    });
+  };
+
+  // --- Components ---
+
+  const AuthScreen = () => {
+    const [loading, setLoading] = useState(false);
+
+    const handleGoogleLogin = async () => {
+      setLoading(true);
+      try {
+        await signInWithPopup(auth, googleProvider);
+      } catch (error) {
+        showToast("เข้าสู่ระบบด้วย Google ล้มเหลว: " + error.message, "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center text-indigo-600">
+            <QrCode size={48} />
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Dynamics QR & Link Hub
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            จัดการลิงก์ย่อ คิวอาร์โค้ด และแชร์ไฟล์ในที่เดียว
+          </p>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
+            <button 
+              onClick={handleGoogleLogin} 
+              disabled={loading}
+              className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition"
+            >
+              {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  เข้าสู่ระบบด้วยบัญชี Google
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ItemCard = ({ item }) => {
+    const Icon = item.type === 'qr' ? QrCode : item.type === 'link' ? LinkIcon : FileUp;
+    const itemColor = item.type === 'qr' ? 'text-purple-500' : item.type === 'link' ? 'text-blue-500' : 'text-orange-500';
+    
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between transition hover:shadow-md">
+        <div>
+          <div className="flex justify-between items-start mb-3">
+            <div className={`p-2 rounded-lg bg-gray-50 ${itemColor}`}>
+              <Icon size={24} />
+            </div>
+            {isAdmin && activeTab === 'admin' && (
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full truncate max-w-[120px]">
+                {item.userEmail}
+              </span>
+            )}
+          </div>
+          <h3 className="font-semibold text-gray-800 truncate mb-1">{item.name}</h3>
+          
+          <div className="text-sm text-gray-500 truncate mb-4">
+            {item.type === 'qr' && item.originalData}
+            {item.type === 'link' && item.url}
+            {item.type === 'file' && `${(item.size / 1024 / 1024).toFixed(2)} MB`}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 border-t pt-3 mt-auto">
+          {item.type === 'qr' && (
+             <a href={item.url} target="_blank" rel="noreferrer" className="flex-1 text-center bg-indigo-50 text-indigo-600 text-sm py-2 rounded-lg hover:bg-indigo-100 transition">
+               ดู QR Code
+             </a>
+          )}
+          {item.type === 'link' && (
+             <button onClick={() => copyToClipboard(item.shortLink)} className="flex-1 flex items-center justify-center gap-1 bg-blue-50 text-blue-600 text-sm py-2 rounded-lg hover:bg-blue-100 transition">
+               <Copy size={16}/> คัดลอกลิงก์
+             </button>
+          )}
+          {item.type === 'file' && (
+             <a href={item.url} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1 bg-orange-50 text-orange-600 text-sm py-2 rounded-lg hover:bg-orange-100 transition">
+               <ExternalLink size={16}/> โหลดไฟล์
+             </a>
+          )}
+          
+          <button onClick={() => handleDelete(item)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // --- Main Render ---
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>;
+  }
+
+  if (!user) {
+    return (
+      <>
+        <AuthScreen />
+        {toast.show && (
+          <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-white z-50 ${toast.type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`}>
+            {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+            <span className="font-medium">{toast.message}</span>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans">
+      {/* Sidebar */}
+      <div className="w-full md:w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+        <div className="p-5 border-b border-gray-100">
+          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xl">
+            <QrCode size={24} /> <span>DynamicHub</span>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 truncate">{user.email}</div>
+          {isAdmin && <span className="inline-block mt-1 text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Administrator</span>}
+        </div>
+        
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <LayoutDashboard size={20} /> แดชบอร์ด
+          </button>
+          <button onClick={() => setActiveTab('qr')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${activeTab === 'qr' ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <QrCode size={20} /> สร้างคิวอาร์โค้ด
+          </button>
+          <button onClick={() => setActiveTab('link')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${activeTab === 'link' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <LinkIcon size={20} /> สร้างลิงก์ย่อ
+          </button>
+          <button onClick={() => setActiveTab('file')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${activeTab === 'file' ? 'bg-orange-50 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <FileUp size={20} /> อัปโหลดไฟล์
+          </button>
+          
+          {isAdmin && (
+             <button onClick={() => setActiveTab('admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${activeTab === 'admin' ? 'bg-red-50 text-red-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+               <Shield size={20} /> จัดการระบบ (Admin)
+             </button>
+          )}
+        </nav>
+
+        <div className="p-4 border-t border-gray-100">
+          <button onClick={() => signOut(auth)} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+            <LogOut size={18} /> ออกจากระบบ
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        
+        {/* DASHBOARD TAB */}
+        {activeTab === 'dashboard' && (
+          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold text-gray-800 mb-6">แดชบอร์ดของคุณ</h1>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white shadow-md">
+                <QrCode size={32} className="mb-4 opacity-80"/>
+                <div className="text-3xl font-bold">{items.filter(i => i.type === 'qr').length}</div>
+                <div className="text-purple-100 text-sm mt-1">คิวอาร์โค้ดทั้งหมด</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-6 text-white shadow-md">
+                <LinkIcon size={32} className="mb-4 opacity-80"/>
+                <div className="text-3xl font-bold">{items.filter(i => i.type === 'link').length}</div>
+                <div className="text-blue-100 text-sm mt-1">ลิงก์ย่อทั้งหมด</div>
+              </div>
+              <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-2xl p-6 text-white shadow-md">
+                <FileUp size={32} className="mb-4 opacity-80"/>
+                <div className="text-3xl font-bold">{items.filter(i => i.type === 'file').length}</div>
+                <div className="text-orange-100 text-sm mt-1">ไฟล์ทั้งหมด</div>
+              </div>
+            </div>
+
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">รายการล่าสุด</h2>
+            {isLoadingItems ? (
+              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
+                <p className="text-gray-500">ยังไม่มีข้อมูล ลองสร้างบางอย่างดูสิ!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {items.slice(0, 9).map(item => <ItemCard key={item.id} item={item} />)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ADMIN TAB */}
+        {activeTab === 'admin' && isAdmin && (
+          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold text-red-700 mb-2 flex items-center gap-2"><Shield /> ผู้ดูแลระบบ</h1>
+            <p className="text-gray-500 mb-6">แสดงข้อมูลทั้งหมดของผู้ใช้ทุกคนในระบบ</p>
+            
+            {isLoadingItems ? (
+              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-600 text-sm">
+                        <th className="p-4 border-b font-medium">ประเภท</th>
+                        <th className="p-4 border-b font-medium">ชื่อ</th>
+                        <th className="p-4 border-b font-medium">เจ้าของ (อีเมล)</th>
+                        <th className="p-4 border-b font-medium">วันที่สร้าง</th>
+                        <th className="p-4 border-b font-medium text-center">จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm text-gray-700">
+                      {items.map(item => (
+                        <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="p-4">
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${item.type === 'qr' ? 'bg-purple-100 text-purple-700' : item.type === 'link' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {item.type.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="p-4 font-medium truncate max-w-[200px]">{item.name}</td>
+                          <td className="p-4">{item.userEmail}</td>
+                          <td className="p-4 text-gray-500">{new Date(item.createdAt).toLocaleDateString('th-TH')}</td>
+                          <td className="p-4 text-center">
+                             <button onClick={() => handleDelete(item)} className="text-red-500 hover:bg-red-50 p-1 rounded">ลบ</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* QR CREATOR TAB */}
+        {activeTab === 'qr' && (
+          <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><QrCode size={28} /></div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">สร้างคิวอาร์โค้ด</h2>
+                  <p className="text-sm text-gray-500">เปลี่ยนข้อความ หรือลิงก์ ให้เป็นภาพสแกน</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleCreateQR} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อเรียก (เพื่อจำง่าย)</label>
+                  <input type="text" required value={qrName} onChange={e => setQrName(e.target.value)} placeholder="เช่น เมนูร้านอาหาร, ลิงก์ยูทูป"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ข้อมูล หรือ URL</label>
+                  <textarea required value={qrData} onChange={e => setQrData(e.target.value)} placeholder="https://..." rows="3"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition outline-none resize-none" />
+                </div>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 rounded-lg transition shadow-md shadow-purple-200">
+                  สร้างคิวอาร์โค้ด
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* LINK SHORTENER TAB */}
+        {activeTab === 'link' && (
+          <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><LinkIcon size={28} /></div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">ย่อลิงก์</h2>
+                  <p className="text-sm text-gray-500">แปลงลิงก์ยาวๆ ให้สั้นลง แชร์ง่ายขึ้น</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleCreateLink} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อลิงก์</label>
+                  <input type="text" required value={linkName} onChange={e => setLinkName(e.target.value)} placeholder="เช่น กลุ่มไลน์แผนก, เอกสารโปรเจกต์"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ลิงก์ต้นฉบับ (URL ยาว)</label>
+                  <input type="url" required value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://very-long-url.com/..."
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none" />
+                </div>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition shadow-md shadow-blue-200">
+                  ย่อลิงก์
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* FILE UPLOAD TAB */}
+        {activeTab === 'file' && (
+          <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                <div className="p-3 bg-orange-100 text-orange-600 rounded-xl"><FileUp size={28} /></div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">อัปโหลดไฟล์</h2>
+                  <p className="text-sm text-gray-500">ฝากไฟล์ PDF, รูปภาพ (สูงสุด {MAX_FILE_SIZE_MB}MB)</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleUploadFile} className="space-y-5">
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 hover:bg-gray-100 transition relative">
+                   <input type="file" required onChange={e => setUploadFile(e.target.files[0])} disabled={isUploading}
+                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                   <FileUp size={40} className="mx-auto text-gray-400 mb-3" />
+                   <p className="text-gray-700 font-medium">{uploadFile ? uploadFile.name : 'คลิกหรือลากไฟล์มาวางที่นี่'}</p>
+                   <p className="text-sm text-gray-500 mt-1">{uploadFile ? `${(uploadFile.size/1024/1024).toFixed(2)} MB` : `รองรับทุกนามสกุลไฟล์ ไม่เกิน ${MAX_FILE_SIZE_MB}MB`}</p>
+                </div>
+                
+                {isUploading && (
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div className="bg-orange-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                    <p className="text-xs text-center mt-2 text-gray-500">กำลังอัปโหลด {Math.round(uploadProgress)}%</p>
+                  </div>
+                )}
+
+                <button type="submit" disabled={!uploadFile || isUploading} 
+                  className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white font-medium py-3 rounded-lg transition shadow-md shadow-orange-200 flex justify-center items-center gap-2">
+                  {isUploading ? <><Loader2 className="animate-spin" size={20} /> กำลังอัปโหลด...</> : 'อัปโหลดไฟล์'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Global Toast Notification */}
+      {toast.show && (
+        <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-white z-50 animate-in slide-in-from-bottom-5 ${toast.type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`}>
+          {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+          <span className="font-medium text-sm">{toast.message}</span>
+        </div>
+      )}
+    </div>
+  );
+}
